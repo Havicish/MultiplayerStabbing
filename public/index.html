@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dogfights</title>
+</head>
+<body style="color: white; background-color: black;">
+    <div id="SomethingWentWrong" style="display: none;" class="Screen">
+        <h1>Something went wrong.</h1>
+        <h1>Please reload the page.</h1>
+    </div>
+    <div id="GameSelect" style="display: block;" class="Screen">
+        <p id="VersionNum">Version number: 1.0.0</p>
+        <p id="TotalSessions">Total players: 1</p>
+        <input type="text" id="SessionName" maxlength="20" placeholder="Your name" style="color: black; background-color: white;">
+        <br>
+        <input type="text" id="GameName" maxlength="20" placeholder="Game name" style="color: black; background-color: white;">
+        <br>
+        <button id="MakeGame" onclick="MakeGame()" style="color: black; background-color: #fcf;">Make Game</button>
+        <br>
+        <button id="JoinGame" onclick="JoinGame()" style="color: black; background-color: #fcf;">Join Game</button>
+    </div>
+    <div id="Game" style="display: none;" class="Screen">
+        <canvas id="Canvas" style="position: absolute; top: 0; left: 0;"></canvas>
+    </div>
+    <script src="main.js"></script>
+</body>
+</html>
