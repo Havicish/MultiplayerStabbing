@@ -180,8 +180,8 @@ const Server = Http.createServer((Req, Res) => {
 });
 
 // Start the server on port 80
-Server.listen(80, () => {
-    console.log('Server running on port 80');
+Server.listen(8080, () => {
+    console.log('Server running on port 8080');
 });
 
 setInterval(() => {
