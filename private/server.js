@@ -10,6 +10,7 @@ class Session {
         this.Class = "Session";
         this.Health = 100;
         this.Stabbing = 0;
+        this.RespawnTime = 10;
 
         this.ServerSetProps = {};
     }
@@ -20,6 +21,7 @@ class Game {
         this.Id = Id;
         this.Name = "Game" + String(Math.round(Math.random() * 1000));
         this.Class = "Game";
+        this.Bullets = [];
     }
 }
 
@@ -99,6 +101,7 @@ const Server = Http.createServer((Req, Res) => {
                     console.log(`\nAdded new session:\n${Body.Id}, ${Body.Name}`);
                 } else {
                     Object.keys(Body).forEach((Key) => {
+                        if (Key == "RespawnTime") return;
                         ThisSession[Key] = Body[Key];
                     });
                     ThisSession.InactiveTime = 0;
@@ -176,6 +179,26 @@ const Server = Http.createServer((Req, Res) => {
             Res.writeHead(200, { 'Content-Type': 'application/json' });
             Res.end(JSON.stringify({ Response: Response }));
         });
+    } else if (Req.method === 'POST' && Req.url == "/HasResetPos") {
+        let Body = '';
+        Req.on('data', Chunk => {
+            Body = Chunk;
+            Body = JSON.parse(Body);
+            Body = Body.Message;
+        });
+
+        Req.on('end', () => {
+            let ThisSession = FindSession(Body.Id);
+            let Response = null;
+
+            if (ThisSession != null) {
+                Response = ThisSession.ServerSetProps.ResetPos == true;
+                ThisSession.ServerSetProps.ResetPos = false;
+            }
+
+            Res.writeHead(200, { 'Content-Type': 'application/json' });
+            Res.end(JSON.stringify({ Response: Response }));
+        });
     }
 });
 
@@ -212,7 +235,7 @@ setInterval(() => {
     // Plr stab
     for (let Plr of Sessions) {
         for (let Plr2 of Sessions) {
-            if (Plr == Plr2 || Plr.Stabbing > 0 || Plr2.Health <= 0)
+            if (Plr == Plr2 || Plr.Stabbing > 0 || Plr2.Health <= 0 || Plr.Game == undefined || Plr2.Game == undefined || Plr.Game.Id != Plr2.Game.Id)
                 continue;
             if (Distance(Plr.X + Math.cos(Plr.Rot) * 60, Plr.Y + Math.sin(Plr.Rot) * 60, Plr2.X + Math.cos(Plr2.Rot), Plr2.Y + Math.sin(Plr2.Rot)) < 50) {
                 Plr2.ServerSetProps.Health = Plr2.Health - 10;
@@ -237,7 +260,7 @@ setInterval(() => {
                 Plr.RespawnTime = 10;
             Plr.RespawnTime -= DT;
             if (Plr.RespawnTime <= 0) {
-                Plr.ServerSetProps.Health = 100;
+                //Plr.ServerSetProps.Health = 100;
                 Plr.ServerSetProps.ResetPos = true;
             }
             Plr.ServerSetProps.RespawnTime = Plr.RespawnTime;
@@ -247,6 +270,32 @@ setInterval(() => {
 
         if (Plr.Name == "Plr") {
             console.log(Plr.Stabbing);
+        }
+    }
+
+    for (let Game of Games) {
+        for (let [i, Bullet] of Game.Bullets.entries()) {
+            Bullet.X += Math.cos(Bullet.Direction) * 15;
+            Bullet.Y += Math.sin(Bullet.Direction) * 15;
+
+            // Check collision with players
+            for (let Plr of Sessions) {
+                if (Plr.Id == Bullet.OwnerId || Plr.Game == undefined || Plr.Game.Id != Game.Id || Plr.Health <= 0)
+                    continue;
+                if (Distance(Bullet.X, Bullet.Y, Plr.X, Plr.Y) < 20) {
+                    Plr.ServerSetProps.Health = Plr.Health - 20;
+                    Plr.Health -= 20;
+                    Plr.ServerSetProps.VelX = Math.cos(Bullet.Direction) * 10;
+                    Plr.ServerSetProps.VelY = Math.sin(Bullet.Direction) * 10;
+                    console.log(`\n${FindSession(Bullet.OwnerId).Name} hit ${Plr.Name} with a bullet`);
+                    Game.Bullets.splice(i, 1);
+                }
+            }
+
+            // Remove bullet if out of bounds
+            if (Bullet.X < 0 || Bullet.Y < 0 || Bullet.X > 2000 || Bullet.Y > 2000) {
+                Game.Bullets.splice(i, 1);
+            }
         }
     }
 }, 25);

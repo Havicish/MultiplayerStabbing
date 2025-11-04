@@ -7,6 +7,9 @@ let Ctx;
 
 let SomethingWentWrong = false;
 
+const MAX_X = 2000;
+const MAX_Y = 2000;
+
 class Session {
     constructor(Id) {
         this.Id = Id;
@@ -34,6 +37,8 @@ class Game {
         this.Class = "Game";
     }
 }
+
+let Camera = {X: 0, Y: 0};
 
 let SessionsInGame = [];
 
@@ -150,7 +155,7 @@ function IsKeyDown(Key) {
 
 function CalcPlayers() {
     for (let Plr of SessionsInGame) {
-        if (Plr == ThisSession)
+        if (Plr == ThisSession || Plr.Health <= 0)
             continue
 
         Plr.X += Plr.VelX;
@@ -160,43 +165,76 @@ function CalcPlayers() {
             Plr.VelX += Math.cos(Plr.Rot) * Math.sqrt(Plr.VelX ** 2 + Plr.VelY ** 2) / 9;
             Plr.VelY += Math.sin(Plr.Rot) * Math.sqrt(Plr.VelX ** 2 + Plr.VelY ** 2) / 9;
         }
+
+        if (Plr.X < 0) Plr.X = 0;
+        if (Plr.Y < 0) Plr.Y = 0;
+        if (Plr.X > MAX_X) Plr.X = MAX_X;
+        if (Plr.Y > MAX_Y) Plr.Y = MAX_Y;
     }
 }
 
 function DrawPlayers() {
     for (let Plr of SessionsInGame) {
+        if (Plr.Health <= 0)
+            continue;
+
         Ctx.beginPath();
         Ctx.fillStyle = `rgb(255, ${Plr.Health * (255 / 100)}, ${Plr.Health * (255 / 100)})`;
-        Ctx.arc(Plr.X, Plr.Y, 10, 0, 2*Math.PI);
+        Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 10, 0, 2*Math.PI);
         Ctx.fill();
         Ctx.beginPath();
-        Ctx.arc(Plr.X, Plr.Y, 25, Math.PI/2, 2*Math.PI - Math.max(Plr.ShootCD, 0) * (2*Math.PI / 150) + Math.PI/2);
+        Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Math.PI/2, 2*Math.PI - Math.max(Plr.ShootCD, 0) * (2*Math.PI / 150) + Math.PI/2);
         Ctx.strokeStyle = `rgba(255, ${Plr.Health * (255 / 100)}, ${Plr.Health * (255 / 100)}, .25)`;
         Ctx.lineWidth = 10;
         Ctx.stroke();
         Ctx.beginPath();
         Ctx.strokeStyle = "white";
-        Ctx.moveTo(Plr.X + Math.cos(Plr.Rot) * 5, Plr.Y + Math.sin(Plr.Rot) * 5);
-        Ctx.lineTo(Plr.X + Math.cos(Plr.Rot) * 60, Plr.Y + Math.sin(Plr.Rot) * 60);
+        Ctx.moveTo(Plr.X + Math.cos(Plr.Rot) * 5 - Camera.X, Plr.Y + Math.sin(Plr.Rot) * 5 - Camera.Y);
+        Ctx.lineTo(Plr.X + Math.cos(Plr.Rot) * 60 - Camera.X, Plr.Y + Math.sin(Plr.Rot) * 60 - Camera.Y);
         Ctx.lineWidth = 1;
         Ctx.stroke();
         Ctx.beginPath();
         Ctx.fillStyle = "white";
         Ctx.font = "12px monospace"
-        Ctx.fillText(Plr.Name, Plr.X - Plr.Name.length * 12 * 3/10, Plr.Y - 20);
+        Ctx.fillText(Plr.Name, Plr.X - Plr.Name.length * 12 * 3/10 - Camera.X, Plr.Y - 20 - Camera.Y);
     }
 
     Ctx.beginPath();
-    Ctx.moveTo(ThisSession.X + Math.cos(ThisSession.Rot) * 60, ThisSession.Y + Math.sin(ThisSession.Rot) * 60);
-    Ctx.lineTo(ThisSession.X + Math.cos(ThisSession.Rot) * 2 ** 16, ThisSession.Y + Math.sin(ThisSession.Rot) * 2 ** 16);
-    Ctx.strokeStyle = "rgba(255, 127, 127, .3)";
+    Ctx.moveTo(ThisSession.X + Math.cos(ThisSession.Rot) * 60 - Camera.X, ThisSession.Y + Math.sin(ThisSession.Rot) * 60 - Camera.Y);
+    Ctx.lineTo(ThisSession.X + Math.cos(ThisSession.Rot) * 2 ** 16 - Camera.X, ThisSession.Y + Math.sin(ThisSession.Rot) * 2 ** 16 - Camera.Y);
+    Ctx.strokeStyle = "rgba(255, 127, 127, 0.5)";
     Ctx.lineWidth = 1;
     Ctx.stroke();
+}
+
+// Draw out of bounds dots (it's just decor)
+function DrawDotsOOB() {
+    Ctx.fillStyle = "white";
+    for (let i = 0; i < 50; i++) {
+        for (let j = 0; j < 50; j++) {
+            let XStep = innerWidth / 50;
+            let YStep = innerHeight / 50;
+            let Step = Math.max(XStep, YStep);
+            XStep = YStep = Step;
+            let XPos = i * XStep + (XStep / 2);
+            let YPos = j * YStep + (YStep / 2);
+
+            if (XPos + Camera.X > 0 && XPos + Camera.X < MAX_X && YPos + Camera.Y > 0 && YPos + Camera.Y < MAX_Y) {
+                continue;
+            }
+
+            Ctx.beginPath();
+            Ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+            Ctx.arc(XPos, YPos, 5, 0, 2*Math.PI);
+            Ctx.fill();
+        }
+    }
 }
 
 let WaitForNewData = 4;
 let LPressed = false;
 function Frame() {
+
     if (IsKeyDown("w")) {
         ThisSession.VelX += Math.cos(ThisSession.Rot) * .6;
         ThisSession.VelY += Math.sin(ThisSession.Rot) * .6;
@@ -231,6 +269,21 @@ function Frame() {
         ThisSession.ShootCD = 150;
     }
 
+    if (ThisSession.Health > 0) {
+      if (ThisSession.X < 0) ThisSession.X = 0;
+      if (ThisSession.Y < 0) ThisSession.Y = 0;
+      if (ThisSession.X > MAX_X) ThisSession.X = MAX_X;
+      if (ThisSession.Y > MAX_Y) ThisSession.Y = MAX_Y;
+    }
+
+    if (ThisSession.ResetPos == true && ThisSession.Health <= 0) {
+        ThisSession.X = Math.round(Math.random() * 2000);
+        ThisSession.Y = Math.round(Math.random() * 2000);
+        ThisSession.ResetPos = false;
+        ThisSession.Health = 100;
+        CallServer(ThisSession, "HasResetPos", (Response) => {});
+    }
+
     WaitForNewData -= 1;
 
     if (WaitForNewData <= 0) {
@@ -250,15 +303,24 @@ function Frame() {
         WaitForNewData = 4;
     }
 
+    if (ThisSession.Health > 0) {
+      Camera.X += (ThisSession.X - innerWidth / 2 - Camera.X) / 10;
+      Camera.Y += (ThisSession.Y - innerHeight / 2 - Camera.Y) / 10;
+    }
+
     Canvas.width = innerWidth;
     Canvas.height = innerHeight;
 
     Ctx.clearRect(0, 0, Canvas.width, Canvas.height);
     Ctx.fillStyle = "black";
     Ctx.fillRect(0, 0, Canvas.width, Canvas.height);
+    Ctx.strokeStyle = "white";
+    Ctx.lineWidth = 4;
+    Ctx.strokeRect(0 - Camera.X, 0 - Camera.Y, MAX_X, MAX_Y);
 
     CalcPlayers();
     DrawPlayers();
+    DrawDotsOOB();
 
     if (!SomethingWentWrong)
         requestAnimationFrame(Frame);
