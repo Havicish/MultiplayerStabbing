@@ -28,8 +28,8 @@ class Session {
         this.Move2CD = 0;
         this.Move1MaxCD = 3;
         this.Move2MaxCD = 3;
-        this.Move1 = "Dash";
-        this.Move2 = "Back Dash";
+        this.Move1 = "Phase Dash";
+        this.Move2 = "Quick Spin";
         this.ResetPos = false;
 
         Get("#SessionName").value = this.Name;
@@ -47,6 +47,7 @@ class Game {
 let Camera = {X: 0, Y: 0};
 
 let SessionsInGame = [];
+let Caltrops = [];
 
 let ThisSession = new Session(Math.round(Math.random() * 100000000000));
 console.log(`Your session id is: ${ThisSession.Id}\nDon't share it with anyone!`)
@@ -109,6 +110,12 @@ function CallServer(Data, Url, Callback) {
 }
 
 function MakeGame() {
+    ThisSession.Move1 = Get("#Move1").value;
+    ThisSession.Move2 = Get("#Move2").value;
+
+    ThisSession.Move1MaxCD = 0.01;
+    ThisSession.Move2MaxCD = 0.01;
+
     CallServer({ Name: Get("#GameName").value }, "MakeGame", (Response) => {
         ThisSession.Game = Response;
         SetScreen("Game");
@@ -117,6 +124,14 @@ function MakeGame() {
 }
 
 function JoinGame() {
+    ThisSession.Move1 = Get("#Move1").value;
+    ThisSession.Move2 = Get("#Move2").value;
+
+    ThisSession.Move1MaxCD = 0.01;
+    ThisSession.Move2MaxCD = 0.01;
+
+    //ChangeMaxCDLol();
+
     CallServer({ Name: Get("#GameName").value }, "JoinGame", (Response) => {
         if (Response && Response.Class && Response.Class == "Game") {
             ThisSession.Game = Response;
@@ -160,6 +175,34 @@ function IsKeyDown(Key) {
         return false;
 
     return KeysDown.indexOf(Key.toLowerCase()) != -1;
+}
+
+function DrawGameObjs() {
+  for (let Caltrop of Caltrops) {
+    if (!Caltrop) continue;
+
+    const x = Caltrop.X - Camera.X;
+    const y = Caltrop.Y - Camera.Y;
+    const alpha = (Caltrop.TTL ?? Caltrop.TimeToLive ?? 5) / 5;
+    const color = (Caltrop.OwnerId == ThisSession.Id)
+      ? `rgba(127,255,127,${alpha})`
+      : `rgba(255,127,127,${alpha})`;
+
+    Ctx.save();
+    Ctx.translate(x, y);
+    Ctx.rotate(Caltrop.Rot || 0);
+    Ctx.strokeStyle = color;
+
+    for (let i = 0; i < 6; i++) {
+      const angle = i * Math.PI / 3;
+      Ctx.beginPath();
+      Ctx.moveTo(0, 0);
+      Ctx.lineTo(Math.cos(angle) * 16, Math.sin(angle) * 16);
+      Ctx.stroke();
+    }
+
+    Ctx.restore();
+  }
 }
 
 function CalcPlayers() {
@@ -245,6 +288,26 @@ function DrawDotsOOB() {
     }
 }
 
+function ChangeMaxCDLol() {
+    if (ThisSession.Move1 == "Dash")
+        ThisSession.Move1MaxCD = 3;
+    if (ThisSession.Move1 == "Back Dash")
+        ThisSession.Move1MaxCD = 3;
+    if (ThisSession.Move1 == "Phase Dash")
+        ThisSession.Move1MaxCD = 5;
+    if (ThisSession.Move1 == "Quick Spin")
+        ThisSession.Move1MaxCD = 1;
+
+    if (ThisSession.Move2 == "Dash")
+        ThisSession.Move2MaxCD = 3;
+    if (ThisSession.Move2 == "Back Dash")
+        ThisSession.Move2MaxCD = 3;
+    if (ThisSession.Move2 == "Phase Dash")
+        ThisSession.Move2MaxCD = 5;
+    if (ThisSession.Move2 == "Quick Spin")
+        ThisSession.Move2MaxCD = 1;
+}
+
 function Move1() {
     if (ThisSession.Move1CD > 0)
         return;
@@ -261,8 +324,23 @@ function Move1() {
         ThisSession.Move1CD = 3;
     }
 
+    if (ThisSession.Move1 == "Phase Dash") {
+        ThisSession.X += Math.cos(ThisSession.Rot) * 400;
+        ThisSession.Y += Math.sin(ThisSession.Rot) * 400;
+        ThisSession.VelX = 0;
+        ThisSession.VelY = 0;
+        ThisSession.Move1CD = 5;
+    }
+
     if (ThisSession.Move1 == "Quick Spin") {
-        ThisSession.VelRot = Math.PI;
+        ThisSession.Rot += Math.PI;
+    }
+
+    if (ThisSession.Move1 == "Caltrop") {
+        ThisSession.Move1CD = 3.5;
+        CallServer(ThisSession, "CreateCaltrop", (Response) => {
+            ThisSession.Move1CD = 3.5;
+        });
     }
 }
 
@@ -281,9 +359,23 @@ function Move2() {
         ThisSession.VelY = Math.sin(ThisSession.Rot + Math.PI) * 30;
         ThisSession.Move2CD = 3;
     }
+
+    if (ThisSession.Move2 == "Phase Dash") {
+        ThisSession.X += Math.cos(ThisSession.Rot) * 400;
+        ThisSession.Y += Math.sin(ThisSession.Rot) * 400;
+        ThisSession.VelX = 0;
+        ThisSession.VelY = 0;
+        ThisSession.Move2CD = 5;
+    }
+
+    if (ThisSession.Move2 == "Quick Spin") {
+        ThisSession.Rot += Math.PI;
+    }
 }
 
 let WaitForNewData = 4;
+let LastKDown = false;
+let LastLDown = false;
 let Ping = [];
 let LastRecTime = Date.now();
 function Frame() {
@@ -291,11 +383,12 @@ function Frame() {
     LastRecTime = Date.now();
 
     if (IsKeyDown("w")) {
-        ThisSession.VelX += Math.cos(ThisSession.Rot) * .6;
-        ThisSession.VelY += Math.sin(ThisSession.Rot) * .6;
+        ThisSession.VelX += Math.cos(ThisSession.Rot) * DT * 60 / 2;
+        ThisSession.VelY += Math.sin(ThisSession.Rot) * DT * 60 / 2;
     }
-    ThisSession.VelX /= 1.06;
-    ThisSession.VelY /= 1.06;
+
+    ThisSession.VelX *= Math.pow(1 / 1.06, DT * 60);
+    ThisSession.VelY *= Math.pow(1 / 1.06, DT * 60);
     ThisSession.VelRot = 0;
     if (IsKeyDown("a"))
         ThisSession.VelRot -= 0.1;
@@ -312,15 +405,29 @@ function Frame() {
     ThisSession.Move2CD = Math.max(0, ThisSession.Move2CD - DT);
 
     if (IsKeyDown("k")) {
-        Move1();
+        let ShouldSetMaxCD = ThisSession.Move1CD <= 0;
+        if (ThisSession.Move1 != "Quick Spin")
+          Move1();
+        else if (LastKDown == false)
+          Move1();
+        if (ShouldSetMaxCD)
+          ThisSession.Move1MaxCD = Math.max(ThisSession.Move1CD, 0.01);
     }
     if (IsKeyDown("l")) {
-        Move2();
+        let ShouldSetMaxCD = ThisSession.Move2CD <= 0;
+        if (ThisSession.Move2 != "Quick Spin")
+          Move2();
+        else if (LastLDown == false)
+          Move2();
+        if (ShouldSetMaxCD)
+          ThisSession.Move2MaxCD = Math.max(ThisSession.Move2CD, 0.01);
     }
+    LastKDown = IsKeyDown("k");
+    LastLDown = IsKeyDown("l");
 
-    ThisSession.X += ThisSession.VelX;
-    ThisSession.Y += ThisSession.VelY;
-    ThisSession.Rot += ThisSession.VelRot;
+    ThisSession.X += ThisSession.VelX * DT * 60;
+    ThisSession.Y += ThisSession.VelY * DT * 60;
+    ThisSession.Rot += ThisSession.VelRot * DT * 60;
 
     if (ThisSession.Health > 0) {
       if (ThisSession.X < 0) ThisSession.VelX = -ThisSession.VelX;
@@ -334,8 +441,8 @@ function Frame() {
     }
 
     if (ThisSession.ResetPos == true && ThisSession.Health <= 0) {
-        ThisSession.X = Math.round(Math.random() * 2000);
-        ThisSession.Y = Math.round(Math.random() * 2000);
+        ThisSession.X = Math.round(Math.random() * MAX_X);
+        ThisSession.Y = Math.round(Math.random() * MAX_Y);
         ThisSession.ResetPos = false;
         ThisSession.Health = 100;
         CallServer(ThisSession, "HasResetPos", (Response) => {});
@@ -350,6 +457,7 @@ function Frame() {
         CallServer(ThisSession, "Update", (Response) => {
             Get("#TotalSessions").innerHTML = "Total players: " + Response.TotalSessions;
             SessionsInGame = Response.AllSessionsInYourGame;
+            Caltrops = Response.Caltrops || [];
 
             // For loop through all the server set properties
             Object.keys(Response.ServerSetProps).forEach((Key) => {
@@ -366,12 +474,12 @@ function Frame() {
             TotalPing /= Ping.length;
             Get("#Ping").innerHTML = "Ping: " + Math.round(TotalPing) + "ms (round trip)";
         });
-        WaitForNewData = 4;
+        WaitForNewData = 0;
     }
 
     if (ThisSession.Health > 0) {
-      Camera.X += (ThisSession.X - innerWidth / 2 - Camera.X) / 10;
-      Camera.Y += (ThisSession.Y - innerHeight / 2 - Camera.Y) / 10;
+      Camera.X += (ThisSession.X - innerWidth / 2 - Camera.X) / 10 * DT * 60;
+      Camera.Y += (ThisSession.Y - innerHeight / 2 - Camera.Y) / 10 * DT * 60;
     }
 
     Canvas.width = innerWidth;
@@ -384,6 +492,7 @@ function Frame() {
     Ctx.lineWidth = 4;
     Ctx.strokeRect(0 - Camera.X, 0 - Camera.Y, MAX_X, MAX_Y);
 
+    DrawGameObjs();
     CalcPlayers();
     DrawPlayers();
     DrawDotsOOB();
