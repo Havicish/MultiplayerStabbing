@@ -265,7 +265,7 @@ setInterval(() => {
             }
             Plr.ServerSetProps.RespawnTime = Plr.RespawnTime;
         } else {
-            //Plr.ServerSetProps.Health = Plr.Health + (1 * DT);
+            //Plr.ServerSetProps.Health = Math.min(100, Plr.Health + (0.75 * DT));
         }
 
         if (Plr.Name == "Plr") {
