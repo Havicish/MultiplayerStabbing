@@ -11,6 +11,8 @@ class Session {
     this.Health = 100;
     this.Stabbing = 0;
     this.RespawnTime = 10;
+    this.LastHitBy = null;
+    this.Kills = 304958;
 
     this.ServerSetProps = {};
   }
@@ -52,6 +54,8 @@ class EMP {
     this.Y = Y;
     this.OwnerId = OwnerId;
     this.SessionsWhoSawIt = [];
+    this.LifeTime = 0.5;
+    this.Size = 5;
   }
 }
 
@@ -123,6 +127,8 @@ const Server = Http.createServer((Req, Res) => {
         } else {
           Object.keys(Body).forEach((Key) => {
             if (Key == "RespawnTime") return;
+            if (Key == "LastHitBy") return;
+            if (Key == "Kills") return;
             ThisSession[Key] = Body[Key];
           });
           ThisSession.InactiveTime = 0;
@@ -324,12 +330,16 @@ setInterval(() => {
         Plr2.Health -= 10;
         Plr2.ServerSetProps.VelX = Math.cos(Plr.Rot) * 5;
         Plr2.ServerSetProps.VelY = Math.sin(Plr.Rot) * 5;
+        Plr2.LastHitBy = Plr.Id;
         Plr.ServerSetProps.VelX = -Math.cos(Plr.Rot) * 10;
         Plr.ServerSetProps.VelY = -Math.sin(Plr.Rot) * 10;
         Plr.ServerSetProps.X = Plr.X - Math.cos(Plr.Rot) * 60;
         Plr.ServerSetProps.Y = Plr.Y - Math.sin(Plr.Rot) * 60;
         Plr.Stabbing = .25;
         console.log(`\n${Plr.Name} stabbed ${Plr2.Name}`);
+        if (Plr.Health <= 0) {
+          Plr.Kills += 1;
+        }
       }
     }
     Plr.Stabbing -= DT;
@@ -395,6 +405,19 @@ setInterval(() => {
       Caltrop.LifeTime -= DT;
       if (Caltrop.LifeTime <= 0) {
         Game.Caltrops.splice(i, 1);
+      }
+    }
+
+    for (let [i, EMP] of Game.EMPs.entries()) {
+      TotalSessions = Sessions.length;
+      AllSessionsInYourGame = [];
+      for (let Session of Sessions) {
+        if (Session.Game != undefined && Game != undefined && Session.Game.Id == Game.Id) {
+          AllSessionsInYourGame.push(Session);
+        }
+      }
+      if (AllSessionsInYourGame.length == EMP.SessionsWhoSawIt.length) {
+        Game.EMPs.splice(i, 1);
       }
     }
   }
