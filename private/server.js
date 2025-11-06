@@ -13,6 +13,8 @@ class Session {
     this.RespawnTime = 10;
     this.LastHitBy = null;
     this.Kills = 0;
+    this.HasBeenKilled = false;
+    this.MoveStunned = true;
 
     this.ServerSetProps = {};
   }
@@ -26,6 +28,7 @@ class Game {
     this.Bullets = [];
     this.Caltrops = [];
     this.EMPs = [];
+    this.ChatMessages = [];
   }
 }
 
@@ -56,6 +59,15 @@ class EMP {
     this.SessionsWhoSawIt = [];
     this.LifeTime = 0.5;
     this.Size = 5;
+  }
+}
+
+class ChatMessage {
+  constructor(SenderId, SenderName, MessageText) {
+    this.SenderId = SenderId;
+    this.SenderName = SenderName;
+    this.MessageText = MessageText;
+    this.Timestamp = Date.now();
   }
 }
 
@@ -133,6 +145,7 @@ const Server = Http.createServer((Req, Res) => {
             if (Key == "RespawnTime") return;
             if (Key == "LastHitBy") return;
             if (Key == "Kills") return;
+            if (Key == "HasBeenKilled") return;
             ThisSession[Key] = Body[Key];
           });
           ThisSession.InactiveTime = 0;
@@ -159,6 +172,7 @@ const Server = Http.createServer((Req, Res) => {
             EMP.SessionsWhoSawIt.push(Body.Id);
           }
         }
+        Body.ChatMessages = Game.ChatMessages;
       }
 
       Res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -291,6 +305,48 @@ const Server = Http.createServer((Req, Res) => {
       Res.writeHead(200, { 'Content-Type': 'application/json' });
       Res.end(JSON.stringify({ Response: Response }));
     });
+  } else if (Req.method === 'POST' && Req.url == "/KillSelf") {
+    let Body = '';
+    Req.on('data', Chunk => {
+      Body = Chunk;
+      Body = JSON.parse(Body);
+      Body = Body.Message;
+    });
+
+    Req.on('end', () => {
+      let ThisSession = FindSession(Body.Id);
+      let Response = null;
+
+      if (ThisSession != null) {
+        ThisSession.ServerSetProps.Health = 0;
+        ThisSession.Health = 0;
+      }
+
+      Res.writeHead(200, { 'Content-Type': 'application/json' });
+      Res.end(JSON.stringify({ Response: Response }));
+    });
+  } else if (Req.method === 'POST' && Req.url == "/SendChatMessage") {
+    let Body = '';
+    Req.on('data', Chunk => {
+      Body = Chunk;
+      Body = JSON.parse(Body);
+      Body = Body.Message;
+    });
+
+    Req.on('end', () => {
+      let ThisSession = FindSession(Body.Id);
+      let Response = null;
+      let Game = FindGame(Body.Game.Id);
+
+      if (ThisSession != null && Game != null) {
+        let NewMessage = new ChatMessage(Body.Id, ThisSession.Name, Body.TryingToSendMessage);
+        Game.ChatMessages.push(NewMessage);
+        console.log(`\n${ThisSession.Name} sent a chat message: ${Body.TryingToSendMessage}`);
+      }
+
+      Res.writeHead(200, { 'Content-Type': 'application/json' });
+      Res.end(JSON.stringify({ Response: Response }));
+    });
   }
 });
 
@@ -355,13 +411,18 @@ setInterval(() => {
       if (Plr.RespawnTime <= 0) {
         //Plr.ServerSetProps.Health = 100;
         Plr.ServerSetProps.ResetPos = true;
+        Plr.LastHitBy = null;
+        Plr.HasBeenKilled = false;
       }
       Plr.ServerSetProps.RespawnTime = Plr.RespawnTime;
-      let Killer = FindSession(Plr.LastHitBy);
-      Killer.Kills += 1;
-      Killer.ServerSetProps.Kills = Killer.Kills;
-      Killer.Health = Math.min(100, Killer.Health + 75 + Math.round(Math.random()) * 5);
-      Killer.ServerSetProps.Health = Killer.Health;
+      if (Plr.LastHitBy != null && Plr.HasBeenKilled == false) {
+        let Killer = FindSession(Plr.LastHitBy);
+        Killer.Kills += 1;
+        Killer.ServerSetProps.Kills = Killer.Kills;
+        Killer.Health = Math.min(100, Killer.Health + 75 + Math.round(Math.random()) * 5);
+        Killer.ServerSetProps.Health = Killer.Health;
+        Plr.HasBeenKilled = true;
+      }
     } else {
       //Plr.ServerSetProps.Health = Math.min(100, Plr.Health + (0.75 * DT));
     }

@@ -47,7 +47,7 @@
               const move = this.value;
               const descriptions = {
                   'Dash': 'A simple dash. Cooldown of 3 seconds.',
-                  'Back Dash': 'A simple dash that moves backwards. Cooldown of 3 seconds.',
+                  'Back Dash': 'A simple dash that moves backwards. Cooldown of 2 seconds.',
                   'Phase Dash': 'A dash that allows you to move through enemies and obstacles. Cooldown of 7.5 seconds.',
                   'Quick Spin': 'Immediate 180 degree spin. No cooldown.',
                   'Caltrop': 'Drops a spike that damages enemies. Caltrops disappear after 10 seconds. Cooldown of 3.5 seconds.',
@@ -87,7 +87,7 @@
               const move = this.value;
               const descriptions = {
                   'Dash': 'A simple dash. Cooldown of 3 seconds.',
-                  'Back Dash': 'A simple dash that moves backwards. Cooldown of 3 seconds.',
+                  'Back Dash': 'A simple dash that moves backwards. Cooldown of 2 seconds.',
                   'Phase Dash': 'A dash that allows you to move through enemies and obstacles. Cooldown of 7.5 seconds.',
                   'Quick Spin': 'Immediate 180 degree spin. No cooldown.',
                   'Caltrop': 'Drops a spike that damages enemies. Caltrops disappear after 10 seconds. Cooldown of 3.5 seconds.',
@@ -129,20 +129,25 @@
         <br>
         <span>Controls:</span>
         <br>
-        <span>W to move forward.</span>
+        <input id="ForwardControl" type="text" maxlength="1" value="W" placeholder="W" style="width: 24px;"><span> to move forward.</span>
         <br>
-        <span>A to turn left.</span>
+        <input id="LeftControl" type="text" maxlength="1" value="A" placeholder="A" style="width: 24px;"><span> to turn left.</span>
         <br>
-        <span>D to turn right.</span>
+        <input id="RightControl" type="text" maxlength="1" value="D" placeholder="D" style="width: 24px;"><span> to turn right.</span>
         <br>
-        <span>K to use Move 1.</span>
+        <input id="Move1Control" type="text" maxlength="1" value="K" placeholder="K" style="width: 24px;"><span> to use Move 1.</span>
         <br>
-        <span>L to use Move 2.</span>
+        <input id="Move2Control" type="text" maxlength="1" value="L" placeholder="L" style="width: 24px;"><span> to use Move 2.</span>
     </div>
     <div id="Game" style="display: none;" class="Screen">
         <canvas id="Canvas" style="position: absolute; top: 0; left: 0;"></canvas>
         <span style="position: absolute; bottom: 10px; left: 10px; font-weight: bold;" id="Ping"></span>
         <span style="position: absolute; bottom: 25px; left: 10px; font-weight: bold;" id="Log"></span>
+        <div id="Chat" style="position: absolute; bottom: 30px; left: 0; width: 300px; height: 70px;">
+            <div id="ChatMessages" style="overflow-y: scroll; max-height: 200px; width: 300px; background-color: rgba(0, 0, 0, 0.5); padding: 5px; position: absolute; bottom: 40px; left: 10px; font-size: 14px;"></div>
+            <input type="text" id="ChatInput" style="position: absolute; bottom: 10px; left: 10px; width: 240px; color: black; background-color: white;" placeholder="Type a message..." maxlength="200" />
+            <button id="ChatSend" style="position: absolute; bottom: 10px; left: 260px; color: black; background-color: #fcf;">Send</button>
+        </div>
     </div>
     <script src="main.js"></script>
 </body>

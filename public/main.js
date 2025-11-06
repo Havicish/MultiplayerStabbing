@@ -31,6 +31,8 @@ class Session {
     this.Move1 = "Phase Dash";
     this.Move2 = "Quick Spin";
     this.ResetPos = false;
+    this.MoveStunned = 0;
+    this.TryingToSendMessage = null;
 
     Get("#SessionName").value = this.Name;
   }
@@ -50,6 +52,7 @@ let SessionsInGame = [];
 let Caltrops = [];
 let Bullets = [];
 let EMPs = [];
+let ChatMessages = [];
 
 let ThisSession = new Session(Math.round(Math.random() * 100000000000));
 console.log(`Your session id is: ${ThisSession.Id}\nDon't share it with anyone!`)
@@ -138,8 +141,6 @@ function JoinGame() {
   ThisSession.Move1MaxCD = 0.01;
   ThisSession.Move2MaxCD = 0.01;
 
-  //ChangeMaxCDLol();
-
   CallServer({ Name: Get("#GameName").value }, "JoinGame", (Response) => {
     if (Response && Response.Class && Response.Class == "Game") {
       ThisSession.Game = Response;
@@ -183,6 +184,29 @@ function IsKeyDown(Key) {
     return false;
 
   return KeysDown.indexOf(Key.toLowerCase()) != -1;
+}
+
+function SendChatMessage() {
+  const Input = Get("#ChatInput");
+  const Message = Input.value;
+  if (Message) {
+    CallServer(ThisSession, "SendChatMessage", (Response) => {
+      if (Response && Response.Success) {
+        Input.value = "";
+      }
+    });
+  }
+}
+
+function ShowChatMessages() {
+  const ChatDiv = Get("#ChatMessages");
+  ChatDiv.innerHTML = "";
+  for (let Msg of ChatMessages) {
+    const MsgElement = document.createElement("div");
+    MsgElement.className = "ChatMessage";
+    MsgElement.innerHTML = `<strong>${Msg.SenderName}:</strong> ${Msg.MessageText}`;
+    ChatDiv.appendChild(MsgElement);
+  }
 }
 
 function DrawGameObjs() {
@@ -300,12 +324,18 @@ function DrawPlayers() {
     Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 10, 0, 2*Math.PI);
     Ctx.fill();
     Ctx.beginPath();
-    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot, Plr.Rot + Math.PI * (1 - (Plr.Move2CD / Plr.Move2MaxCD)));
+    if (Plr.MoveStunned > 0)
+      Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot, Plr.Rot + Math.PI * Math.random());
+    else
+      Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot, Plr.Rot + Math.PI * (1 - (Plr.Move2CD / Plr.Move2MaxCD)));
     Ctx.strokeStyle = `rgba(255, ${Plr.Health * (255 / 100)}, ${Plr.Health * (255 / 100)}, .25)`;
     Ctx.lineWidth = 10;
     Ctx.stroke();
     Ctx.beginPath();
-    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot - Math.PI * (1 - (Plr.Move1CD / Plr.Move1MaxCD)), Plr.Rot);
+    if (Plr.MoveStunned > 0)
+      Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot - Math.PI * Math.random(), Plr.Rot);
+    else
+      Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot - Math.PI * (1 - (Plr.Move1CD / Plr.Move1MaxCD)), Plr.Rot);
     Ctx.strokeStyle = `rgba(255, ${Plr.Health * (255 / 100)}, ${Plr.Health * (255 / 100)}, .25)`;
     Ctx.lineWidth = 10;
     Ctx.stroke();
@@ -455,7 +485,7 @@ function Move1() {
   if (ThisSession.Move1 == "Back Dash") {
     ThisSession.VelX = Math.cos(ThisSession.Rot + Math.PI) * 30;
     ThisSession.VelY = Math.sin(ThisSession.Rot + Math.PI) * 30;
-    ThisSession.Move1CD = 3;
+    ThisSession.Move1CD = 2;
   }
 
   if (ThisSession.Move1 == "Phase Dash") {
@@ -509,7 +539,7 @@ function Move2() {
   if (ThisSession.Move2 == "Back Dash") {
     ThisSession.VelX = Math.cos(ThisSession.Rot + Math.PI) * 30;
     ThisSession.VelY = Math.sin(ThisSession.Rot + Math.PI) * 30;
-    ThisSession.Move2CD = 3;
+    ThisSession.Move2CD = 2;
   }
 
   if (ThisSession.Move2 == "Phase Dash") {
@@ -552,7 +582,7 @@ function Frame() {
   let DT = (Date.now() - LastRecTime) / 1000;
   LastRecTime = Date.now();
 
-  if (IsKeyDown("w")) {
+  if (IsKeyDown(Get("#ForwardControl").value.toLowerCase())) {
     ThisSession.VelX += Math.cos(ThisSession.Rot) * DT * 60 / 2;
     ThisSession.VelY += Math.sin(ThisSession.Rot) * DT * 60 / 2;
   }
@@ -560,9 +590,9 @@ function Frame() {
   ThisSession.VelX *= Math.pow(1 / 1.06, DT * 60);
   ThisSession.VelY *= Math.pow(1 / 1.06, DT * 60);
   ThisSession.VelRot = 0;
-  if (IsKeyDown("a"))
+  if (IsKeyDown(Get("#LeftControl").value.toLowerCase()))
     ThisSession.VelRot -= 0.1;
-  if (IsKeyDown("d"))
+  if (IsKeyDown(Get("#RightControl").value.toLowerCase()))
     ThisSession.VelRot += 0.1;
 
   if (SessionsInGame.findIndex(Plr => Plr.Id == ThisSession.Id) == -1) {
@@ -574,7 +604,7 @@ function Frame() {
   ThisSession.Move1CD = Math.max(0, ThisSession.Move1CD - DT);
   ThisSession.Move2CD = Math.max(0, ThisSession.Move2CD - DT);
 
-  if (IsKeyDown("k")) {
+  if (IsKeyDown(Get("#Move1Control").value.toLowerCase()) && ThisSession.MoveStunned == false) {
     let ShouldSetMaxCD = ThisSession.Move1CD <= 0;
     if (ThisSession.Move1 != "Quick Spin")
       Move1();
@@ -582,8 +612,8 @@ function Frame() {
       Move1();
     if (ShouldSetMaxCD)
       ThisSession.Move1MaxCD = Math.max(ThisSession.Move1CD, 0.01);
-  }
-  if (IsKeyDown("l")) {
+  } 
+  if (IsKeyDown(Get("#Move2Control").value.toLowerCase()) && ThisSession.MoveStunned == false) {
     let ShouldSetMaxCD = ThisSession.Move2CD <= 0;
     if (ThisSession.Move2 != "Quick Spin")
       Move2();
@@ -592,8 +622,8 @@ function Frame() {
     if (ShouldSetMaxCD)
       ThisSession.Move2MaxCD = Math.max(ThisSession.Move2CD, 0.01);
   }
-  LastKDown = IsKeyDown("k");
-  LastLDown = IsKeyDown("l");
+  LastKDown = IsKeyDown(Get("#Move1Control").value.toLowerCase());
+  LastLDown = IsKeyDown(Get("#Move2Control").value.toLowerCase());
 
   ThisSession.X += ThisSession.VelX * DT * 60;
   ThisSession.Y += ThisSession.VelY * DT * 60;
@@ -642,7 +672,11 @@ function Frame() {
         EMPs.push(EMP);
       }
 
+      ChatMessages = Response.ChatMessages || [];
+
       // For loop through all the server set properties
+      if (Response.ServerSetProps == undefined)
+        return;
       Object.keys(Response.ServerSetProps).forEach((Key) => {
         ThisSession[Key] = Response.ServerSetProps[Key];
         console.log(`Updated: ${Key} to ${Response.ServerSetProps[Key]}`)
@@ -667,6 +701,8 @@ function Frame() {
     });
     WaitForNewData += (2 / 60);
   }
+
+  ShowChatMessages();
 
   if (ThisSession.Health > 0) {
     Camera.X += (ThisSession.X - innerWidth / 2 - Camera.X) / 10 * DT * 60;
@@ -694,6 +730,17 @@ function Frame() {
   CalcPlayers(DT);
   DrawPlayers();
   DrawLeaderboard();
+
+  if (ThisSession.Health <= 0) {
+    Ctx.beginPath();
+    Ctx.fillStyle = "rgba(255, 255, 255, 0.75)";
+    Ctx.font = "48px monospace";
+    Ctx.textAlign = "center";
+    Ctx.fillText("You have been eliminated!", innerWidth / 2, innerHeight / 2);
+    Ctx.font = "24px monospace";
+    let RespawnTime = Math.floor(ThisSession.RespawnTime);
+    Ctx.fillText(`Respawning in ${RespawnTime} seconds...`, innerWidth / 2, innerHeight / 2 + 40);
+  }
 
   if (!SomethingWentWrong)
     requestAnimationFrame(Frame);
