@@ -23,6 +23,7 @@ class Game {
     this.Class = "Game";
     this.Bullets = [];
     this.Caltrops = [];
+    this.EMPs = [];
   }
 }
 
@@ -41,6 +42,16 @@ class Caltrop {
     this.Y = Y;
     this.OwnerId = OwnerId;
     this.LifeTime = 10;
+    this.Size = 0;
+  }
+}
+
+class EMP {
+  constructor(X, Y, OwnerId) {
+    this.X = X;
+    this.Y = Y;
+    this.OwnerId = OwnerId;
+    this.SessionsWhoSawIt = [];
   }
 }
 
@@ -130,6 +141,14 @@ const Server = Http.createServer((Req, Res) => {
       let Game = FindGame(Body.Game != undefined ? Body.Game.Id : null);
       if (Game) {
         Body.Caltrops = Game.Caltrops;
+        Body.Bullets = Game.Bullets;
+        for (let EMP of Game.EMPs) {
+          if (EMP.SessionsWhoSawIt && !EMP.SessionsWhoSawIt.includes(Body.Id)) {
+            Body.EMPs = Body.EMPs || [];
+            Body.EMPs.push(EMP);
+            EMP.SessionsWhoSawIt.push(Body.Id);
+          }
+        }
       }
 
       Res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -173,26 +192,6 @@ const Server = Http.createServer((Req, Res) => {
       Res.writeHead(200, { 'Content-Type': 'application/json' });
       Res.end(JSON.stringify({ Response: Response }));
     });
-  } else if (Req.method === 'POST' && Req.url == "/ShootBullet") {
-    let Body = '';
-    Req.on('data', Chunk => {
-      Body = Chunk;
-      Body = JSON.parse(Body);
-      Body = Body.Message;
-    });
-
-    Req.on('end', () => {
-      let ThisGame = FindGame(Body.Game.Id);
-      let Response = null;
-
-      if (ThisGame != null) {
-        ThisGame.Bullets.push(new Bullet(Body.X, Body.Y, Body.Direction, Body.Id));
-        Response = ThisGame;
-      }
-
-      Res.writeHead(200, { 'Content-Type': 'application/json' });
-      Res.end(JSON.stringify({ Response: Response }));
-    });
   } else if (Req.method === 'POST' && Req.url == "/HasResetPos") {
     let Body = '';
     Req.on('data', Chunk => {
@@ -228,6 +227,55 @@ const Server = Http.createServer((Req, Res) => {
 
       if (ThisSession != null) {
         Game.Caltrops.push(new Caltrop(Body.X, Body.Y, Body.Id));
+      }
+
+      Res.writeHead(200, { 'Content-Type': 'application/json' });
+      Res.end(JSON.stringify({ Response: Response }));
+    });
+  } else if (Req.method === 'POST' && Req.url == "/CreateBullet") {
+    let Body = '';
+    Req.on('data', Chunk => {
+      Body = Chunk;
+      Body = JSON.parse(Body);
+      Body = Body.Message;
+    });
+
+    Req.on('end', () => {
+      let ThisSession = FindSession(Body.Id);
+      let Response = null;
+      let Game = FindGame(Body.Game.Id);
+
+      if (ThisSession != null) {
+        Game.Bullets.push(new Bullet(Body.X, Body.Y, Body.Rot, Body.Id));
+      }
+
+      Res.writeHead(200, { 'Content-Type': 'application/json' });
+      Res.end(JSON.stringify({ Response: Response }));
+    });
+  } else if (Req.method === 'POST' && Req.url == "/CreateEMP") {
+    let Body = '';
+    Req.on('data', Chunk => {
+      Body = Chunk;
+      Body = JSON.parse(Body);
+      Body = Body.Message;
+    });
+
+    Req.on('end', () => {
+      let ThisSession = FindSession(Body.Id);
+      let Response = null;
+      let Game = FindGame(Body.Game.Id);
+
+      let NewEMP = new EMP(Body.X, Body.Y, Body.Id);
+      Game.EMPs.push(NewEMP);
+
+      if (ThisSession != null) {
+        for (let Plr of Sessions) {
+          if (Plr.Id == ThisSession.Id || Plr.Game == undefined || Plr.Game.Id != Game.Id)
+            continue;
+          if (Distance(ThisSession.X, ThisSession.Y, Plr.X, Plr.Y) <= 200) {
+            Plr.ServerSetProps.MoveStunned = 4;
+          }
+        }
       }
 
       Res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -309,20 +357,21 @@ setInterval(() => {
 
   for (let Game of Games) {
     for (let [i, Bullet] of Game.Bullets.entries()) {
-      Bullet.X += Math.cos(Bullet.Direction) * 15;
-      Bullet.Y += Math.sin(Bullet.Direction) * 15;
+      Bullet.X += Math.cos(Bullet.Direction) * 15 * DT * 60;
+      Bullet.Y += Math.sin(Bullet.Direction) * 15 * DT * 60;
 
       // Check collision with players
       for (let Plr of Sessions) {
         if (Plr.Id == Bullet.OwnerId || Plr.Game == undefined || Plr.Game.Id != Game.Id || Plr.Health <= 0)
           continue;
-        if (Distance(Bullet.X, Bullet.Y, Plr.X, Plr.Y) < 20) {
-          Plr.ServerSetProps.Health = Plr.Health - 20;
-          Plr.Health -= 20;
-          Plr.ServerSetProps.VelX = Math.cos(Bullet.Direction) * 20;
-          Plr.ServerSetProps.VelY = Math.sin(Bullet.Direction) * 20;
+        if (Distance(Bullet.X, Bullet.Y, Plr.X, Plr.Y) < 40) {
+          Plr.ServerSetProps.Health = Plr.Health - 10;
+          Plr.Health -= 10;
+          Plr.ServerSetProps.VelX = Math.cos(Bullet.Direction) * 10;
+          Plr.ServerSetProps.VelY = Math.sin(Bullet.Direction) * 10;
           console.log(`\n${FindSession(Bullet.OwnerId).Name} hit ${Plr.Name} with a bullet`);
           Game.Bullets.splice(i, 1);
+          break;
         }
       }
 
@@ -334,7 +383,8 @@ setInterval(() => {
 
     for (let [i, Caltrop] of Game.Caltrops.entries()) {
       for (let Plr of Sessions) {
-        if (Distance(Caltrop.X, Caltrop.Y, Plr.X, Plr.Y) <= 60 && Plr.Id != Caltrop.OwnerId) {
+        if (Distance(Caltrop.X, Caltrop.Y, Plr.X, Plr.Y) <= 60 && Plr.Id != Caltrop.OwnerId && Plr.Game != undefined && Plr.Game.Id == Game.Id) {
+          Plr.ServerSetProps.Health = Plr.Health - 20;
           Plr.Health -= 20;
           let Dir = Math.atan2(Plr.Y - Caltrop.Y, Plr.X - Caltrop.X);
           Plr.ServerSetProps.VelX = Math.cos(Dir) * 10;

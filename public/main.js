@@ -48,6 +48,8 @@ let Camera = {X: 0, Y: 0};
 
 let SessionsInGame = [];
 let Caltrops = [];
+let Bullets = [];
+let EMPs = [];
 
 let ThisSession = new Session(Math.round(Math.random() * 100000000000));
 console.log(`Your session id is: ${ThisSession.Id}\nDon't share it with anyone!`)
@@ -77,6 +79,12 @@ document.addEventListener("keydown", (Event) => {
 });
 document.addEventListener("keyup", (Event) => {
     KeysDown.splice(KeysDown.indexOf(Event.key.toLowerCase()), 1);
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  window.addEventListener("error", (event) => {
+    alert(`Uncaught error: ${event.error.message}\nFile: ${event.filename}\nLine: ${event.lineno}`);
+  });
 });
 
 /**
@@ -183,7 +191,7 @@ function DrawGameObjs() {
 
     const x = Caltrop.X - Camera.X;
     const y = Caltrop.Y - Camera.Y;
-    const alpha = (Caltrop.TTL ?? Caltrop.TimeToLive ?? 5) / 5;
+    const alpha = (Caltrop.LifeTime / 10) * 0.75 + 0.25;
     const color = (Caltrop.OwnerId == ThisSession.Id)
       ? `rgba(127,255,127,${alpha})`
       : `rgba(255,127,127,${alpha})`;
@@ -198,30 +206,87 @@ function DrawGameObjs() {
       Ctx.beginPath();
       Ctx.moveTo(0, 0);
       Ctx.lineTo(Math.cos(angle) * 16, Math.sin(angle) * 16);
+      Ctx.lineWidth = 3;
       Ctx.stroke();
     }
 
     Ctx.restore();
   }
+
+  for (let Bullet of Bullets) {
+    if (!Bullet) continue;
+
+    if (Bullet.X < 0 || Bullet.Y < 0 || Bullet.X > MAX_X || Bullet.Y > MAX_Y)
+      continue;
+
+    const x = Bullet.X - Camera.X;
+    const y = Bullet.Y - Camera.Y;
+
+    const color = (Bullet.OwnerId == ThisSession.Id)
+      ? `rgb(127,255,127)`
+      : `rgb(255,127,127)`;
+
+    Ctx.beginPath();
+    Ctx.fillStyle = color;
+    Ctx.arc(x, y, 5, 0, 2 * Math.PI);
+    Ctx.fill();
+  }
+
+  for (let EMP of EMPs) {
+    if (!EMP) continue;
+
+    const x = EMP.X - Camera.X;
+    const y = EMP.Y - Camera.Y;
+
+    Ctx.beginPath();
+    Ctx.fillStyle = `rgba(0, 255, 255, 0.5)`;
+    Ctx.arc(x, y, EMP.Size, 0, 2 * Math.PI);
+    Ctx.fill();
+
+    Ctx.beginPath();
+    Ctx.strokeStyle = `rgba(0, 128, 128, 0.5)`;
+    Ctx.arc(x, y, EMP.Size, 0, 2 * Math.PI);
+    Ctx.lineWidth = 4;
+    Ctx.stroke();
+  }
 }
 
-function CalcPlayers() {
+function CalcPlayers(DT) {
     for (let Plr of SessionsInGame) {
         if (Plr == ThisSession || Plr.Health <= 0)
             continue
 
-        Plr.X += Plr.VelX;
-        Plr.Y += Plr.VelY;
-        Plr.Rot += Plr.VelRot;
+        Plr.X += Plr.VelX * DT * 60;
+        Plr.Y += Plr.VelY * DT * 60;
+        Plr.Rot += Plr.VelRot * DT * 60;
         if (Math.sqrt(Plr.VelX ** 2 + Plr.VelY ** 2) > 1) {
-            Plr.VelX += Math.cos(Plr.Rot) * Math.sqrt(Plr.VelX ** 2 + Plr.VelY ** 2) / 9;
-            Plr.VelY += Math.sin(Plr.Rot) * Math.sqrt(Plr.VelX ** 2 + Plr.VelY ** 2) / 9;
+            Plr.VelX += (Math.cos(Plr.Rot) * Math.sqrt(Plr.VelX ** 2 + Plr.VelY ** 2) / 9) * DT * 60;
+            Plr.VelY += (Math.sin(Plr.Rot) * Math.sqrt(Plr.VelX ** 2 + Plr.VelY ** 2) / 9) * DT * 60;
         }
 
         if (Plr.X < 0) Plr.X = 0;
         if (Plr.Y < 0) Plr.Y = 0;
         if (Plr.X > MAX_X) Plr.X = MAX_X;
         if (Plr.Y > MAX_Y) Plr.Y = MAX_Y;
+    }
+}
+
+function CalcBullets(DT) {
+    for (let Bullet of Bullets) {
+        Bullet.X += Math.cos(Bullet.Direction) * 15 * DT * 60;
+        Bullet.Y += Math.sin(Bullet.Direction) * 15 * DT * 60;
+    }
+}
+
+function CalcEMPs(DT) {
+    for (let EMP of EMPs) {
+        if (EMP.LifeTime == undefined) EMP.LifeTime = 1;
+        EMP.LifeTime -= DT;
+        if (!EMP.Size) EMP.Size = 0;
+        EMP.Size += DT * 40;
+        if (EMP.LifeTime <= 0) {
+            EMPs.splice(EMPs.indexOf(EMP), 1);
+        }
     }
 }
 
@@ -264,17 +329,16 @@ function DrawPlayers() {
     Ctx.stroke();
 }
 
-// Draw out of bounds dots (it's just decor)
-function DrawDotsOOB() {
+function DrawDots() {
     Ctx.fillStyle = "white";
-    for (let i = 0; i < 50; i++) {
-        for (let j = 0; j < 50; j++) {
-            let XStep = innerWidth / 50;
-            let YStep = innerHeight / 50;
+    for (let i = -2; i < 32; i++) {
+        for (let j = -2; j < 32; j++) {
+            let XStep = innerWidth / 30;
+            let YStep = innerHeight / 30;
             let Step = Math.max(XStep, YStep);
             XStep = YStep = Step;
-            let XPos = i * XStep + (XStep / 2);
-            let YPos = j * YStep + (YStep / 2);
+            let XPos = i * XStep + (XStep / 2) - Camera.X / 10;
+            let YPos = j * YStep + (YStep / 2) - Camera.Y / 10;
 
             if (XPos + Camera.X > 0 && XPos + Camera.X < MAX_X && YPos + Camera.Y > 0 && YPos + Camera.Y < MAX_Y) {
                 continue;
@@ -286,26 +350,26 @@ function DrawDotsOOB() {
             Ctx.fill();
         }
     }
-}
 
-function ChangeMaxCDLol() {
-    if (ThisSession.Move1 == "Dash")
-        ThisSession.Move1MaxCD = 3;
-    if (ThisSession.Move1 == "Back Dash")
-        ThisSession.Move1MaxCD = 3;
-    if (ThisSession.Move1 == "Phase Dash")
-        ThisSession.Move1MaxCD = 5;
-    if (ThisSession.Move1 == "Quick Spin")
-        ThisSession.Move1MaxCD = 1;
+    for (let i = 0; i < 25; i++) {
+        for (let j = 0; j < 25; j++) {
+            let XStep = MAX_X / 25;
+            let YStep = MAX_Y / 25;
+            let Step = Math.max(XStep, YStep);
+            XStep = YStep = Step;
+            let XPos = i * XStep + (XStep / 2);
+            let YPos = j * YStep + (YStep / 2);
 
-    if (ThisSession.Move2 == "Dash")
-        ThisSession.Move2MaxCD = 3;
-    if (ThisSession.Move2 == "Back Dash")
-        ThisSession.Move2MaxCD = 3;
-    if (ThisSession.Move2 == "Phase Dash")
-        ThisSession.Move2MaxCD = 5;
-    if (ThisSession.Move2 == "Quick Spin")
-        ThisSession.Move2MaxCD = 1;
+            if (XPos < 0 && XPos > MAX_X && YPos < 0 && YPos > MAX_Y) {
+                continue;
+            }
+
+            Ctx.beginPath();
+            Ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+            Ctx.arc(XPos - Camera.X, YPos - Camera.Y, 2, 0, 2*Math.PI);
+            Ctx.fill();
+        }
+    }
 }
 
 function Move1() {
@@ -325,11 +389,13 @@ function Move1() {
     }
 
     if (ThisSession.Move1 == "Phase Dash") {
+        ThisSession.Move1CD = 7.5;
+        ThisSession.VelX = 0;
+        ThisSession.VelY = 0;
         ThisSession.X += Math.cos(ThisSession.Rot) * 400;
         ThisSession.Y += Math.sin(ThisSession.Rot) * 400;
         ThisSession.VelX = 0;
         ThisSession.VelY = 0;
-        ThisSession.Move1CD = 5;
     }
 
     if (ThisSession.Move1 == "Quick Spin") {
@@ -340,6 +406,20 @@ function Move1() {
         ThisSession.Move1CD = 3.5;
         CallServer(ThisSession, "CreateCaltrop", (Response) => {
             ThisSession.Move1CD = 3.5;
+        });
+    }
+
+    if (ThisSession.Move1 == "Shoot") {
+        ThisSession.Move1CD = 3;
+        CallServer(ThisSession, "CreateBullet", (Response) => {
+            ThisSession.Move1CD = 3;
+        });
+    }
+
+    if (ThisSession.Move1 == "EMP") {
+        ThisSession.Move1CD = 10;
+        CallServer(ThisSession, "CreateEMP", (Response) => {
+            ThisSession.Move1CD = 10;
         });
     }
 }
@@ -361,15 +441,31 @@ function Move2() {
     }
 
     if (ThisSession.Move2 == "Phase Dash") {
+        ThisSession.Move2CD = 7.5;
+        ThisSession.VelX = 0;
+        ThisSession.VelY = 0;
         ThisSession.X += Math.cos(ThisSession.Rot) * 400;
         ThisSession.Y += Math.sin(ThisSession.Rot) * 400;
         ThisSession.VelX = 0;
         ThisSession.VelY = 0;
-        ThisSession.Move2CD = 5;
     }
 
     if (ThisSession.Move2 == "Quick Spin") {
         ThisSession.Rot += Math.PI;
+    }
+
+    if (ThisSession.Move2 == "Caltrop") {
+        ThisSession.Move2CD = 3.5;
+        CallServer(ThisSession, "CreateCaltrop", (Response) => {
+            ThisSession.Move2CD = 3.5;
+        });
+    }
+
+    if (ThisSession.Move2 == "Shoot") {
+        ThisSession.Move2CD = 3;
+        CallServer(ThisSession, "CreateBullet", (Response) => {
+            ThisSession.Move2CD = 3;
+        });
     }
 }
 
@@ -448,7 +544,7 @@ function Frame() {
         CallServer(ThisSession, "HasResetPos", (Response) => {});
     }
 
-    WaitForNewData -= 1;
+    WaitForNewData -= 1 * DT;
 
     if (WaitForNewData <= 0) {
         ThisSession.Name = Get("#SessionName").value;
@@ -458,6 +554,11 @@ function Frame() {
             Get("#TotalSessions").innerHTML = "Total players: " + Response.TotalSessions;
             SessionsInGame = Response.AllSessionsInYourGame;
             Caltrops = Response.Caltrops || [];
+            Bullets = Response.Bullets || [];
+
+            for (let EMP of Response.EMPs || []) {
+                EMPs.push(EMP);
+            }
 
             // For loop through all the server set properties
             Object.keys(Response.ServerSetProps).forEach((Key) => {
@@ -472,15 +573,27 @@ function Frame() {
             if (Ping.length > 30)
                 Ping.splice(0, 1);
             TotalPing /= Ping.length;
-            Get("#Ping").innerHTML = "Ping: " + Math.round(TotalPing) + "ms (round trip)";
+            TotalPing = Math.round(TotalPing);
+            Get("#Ping").innerHTML = "Ping: " + TotalPing + "ms (round trip)";
+            if (TotalPing <= 50) {
+                Get("#Ping").style.color = "lime";
+            } else if (TotalPing <= 100) {
+                Get("#Ping").style.color = "yellow";
+            } else {
+                Get("#Ping").style.color = "red";
+            }
         });
-        WaitForNewData = 0;
+        WaitForNewData += (2 / 60);
     }
 
     if (ThisSession.Health > 0) {
       Camera.X += (ThisSession.X - innerWidth / 2 - Camera.X) / 10 * DT * 60;
       Camera.Y += (ThisSession.Y - innerHeight / 2 - Camera.Y) / 10 * DT * 60;
     }
+
+    Get("#Log").innerHTML = EMPs.map((EMP, Index) => {
+        return `EMP ${Index}: X=${EMP.X}, Y=${EMP.Y}, LifeTime=${EMP.LifeTime}`;
+    }).join("<br>");
 
     Canvas.width = innerWidth;
     Canvas.height = innerHeight;
@@ -492,10 +605,11 @@ function Frame() {
     Ctx.lineWidth = 4;
     Ctx.strokeRect(0 - Camera.X, 0 - Camera.Y, MAX_X, MAX_Y);
 
+    DrawDots();
+    CalcBullets(DT);
     DrawGameObjs();
-    CalcPlayers();
+    CalcPlayers(DT);
     DrawPlayers();
-    DrawDotsOOB();
 
     if (!SomethingWentWrong)
         requestAnimationFrame(Frame);
