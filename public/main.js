@@ -205,7 +205,7 @@ function DrawGameObjs() {
       const angle = i * Math.PI / 3;
       Ctx.beginPath();
       Ctx.moveTo(0, 0);
-      Ctx.lineTo(Math.cos(angle) * 16, Math.sin(angle) * 16);
+      Ctx.lineTo(Math.cos(angle) * 24, Math.sin(angle) * 24);
       Ctx.lineWidth = 3;
       Ctx.stroke();
     }
@@ -273,8 +273,8 @@ function CalcPlayers(DT) {
 
 function CalcBullets(DT) {
   for (let Bullet of Bullets) {
-    Bullet.X += Math.cos(Bullet.Direction) * 15 * DT * 60;
-    Bullet.Y += Math.sin(Bullet.Direction) * 15 * DT * 60;
+    Bullet.X += Math.cos(Bullet.Direction) * 25 * DT * 60;
+    Bullet.Y += Math.sin(Bullet.Direction) * 25 * DT * 60;
   }
 }
 
@@ -300,12 +300,12 @@ function DrawPlayers() {
     Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 10, 0, 2*Math.PI);
     Ctx.fill();
     Ctx.beginPath();
-    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot, Plr.Rot + Math.PI * (1 - (Plr.Move1CD / Plr.Move1MaxCD)));
+    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot, Plr.Rot + Math.PI * (1 - (Plr.Move2CD / Plr.Move2MaxCD)));
     Ctx.strokeStyle = `rgba(255, ${Plr.Health * (255 / 100)}, ${Plr.Health * (255 / 100)}, .25)`;
     Ctx.lineWidth = 10;
     Ctx.stroke();
     Ctx.beginPath();
-    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot - Math.PI * (1 - (Plr.Move2CD / Plr.Move2MaxCD)), Plr.Rot);
+    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot - Math.PI * (1 - (Plr.Move1CD / Plr.Move1MaxCD)), Plr.Rot);
     Ctx.strokeStyle = `rgba(255, ${Plr.Health * (255 / 100)}, ${Plr.Health * (255 / 100)}, .25)`;
     Ctx.lineWidth = 10;
     Ctx.stroke();
@@ -470,6 +470,8 @@ function Move1() {
 
   if (ThisSession.Move1 == "Quick Spin") {
     ThisSession.Rot += Math.PI;
+    ThisSession.VelX *= -1;
+    ThisSession.VelY *= -1;
   }
 
   if (ThisSession.Move1 == "Caltrop") {
@@ -480,9 +482,9 @@ function Move1() {
   }
 
   if (ThisSession.Move1 == "Shoot") {
-    ThisSession.Move1CD = 3;
+    ThisSession.Move1CD = 2.5;
     CallServer(ThisSession, "CreateBullet", (Response) => {
-      ThisSession.Move1CD = 3;
+      ThisSession.Move1CD = 2.5;
     });
   }
 
@@ -522,6 +524,8 @@ function Move2() {
 
   if (ThisSession.Move2 == "Quick Spin") {
     ThisSession.Rot += Math.PI;
+    ThisSession.VelX *= -1;
+    ThisSession.VelY *= -1;
   }
 
   if (ThisSession.Move2 == "Caltrop") {
@@ -532,9 +536,9 @@ function Move2() {
   }
 
   if (ThisSession.Move2 == "Shoot") {
-    ThisSession.Move2CD = 3;
+    ThisSession.Move2CD = 2.5;
     CallServer(ThisSession, "CreateBullet", (Response) => {
-      ThisSession.Move2CD = 3;
+      ThisSession.Move2CD = 2.5;
     });
   }
 }
@@ -596,14 +600,18 @@ function Frame() {
   ThisSession.Rot += ThisSession.VelRot * DT * 60;
 
   if (ThisSession.Health > 0) {
-    if (ThisSession.X < 0) ThisSession.VelX = -ThisSession.VelX;
+    if (ThisSession.X < 0) ThisSession.VelX *= -1.5;
     if (ThisSession.X < 0) ThisSession.X = 0;
-    if (ThisSession.Y < 0) ThisSession.VelY = -ThisSession.VelY;
+    if (ThisSession.Y < 0) ThisSession.VelY *= -1.5;
     if (ThisSession.Y < 0) ThisSession.Y = 0;
-    if (ThisSession.X > MAX_X) ThisSession.VelX = -ThisSession.VelX;
+    if (ThisSession.X > MAX_X) ThisSession.VelX *= -1.5;
     if (ThisSession.X > MAX_X) ThisSession.X = MAX_X;
-    if (ThisSession.Y > MAX_Y) ThisSession.VelY = -ThisSession.VelY;
+    if (ThisSession.Y > MAX_Y) ThisSession.VelY *= -1.5;
     if (ThisSession.Y > MAX_Y) ThisSession.Y = MAX_Y;
+    if (ThisSession.X < 100) ThisSession.VelX += (100 - ThisSession.X) / 250 * DT * 60;
+    if (ThisSession.Y < 100) ThisSession.VelY += (100 - ThisSession.Y) / 250 * DT * 60;
+    if (ThisSession.X > MAX_X - 100) ThisSession.VelX -= (ThisSession.X - (MAX_X - 100)) / 250 * DT * 60;
+    if (ThisSession.Y > MAX_Y - 100) ThisSession.VelY -= (ThisSession.Y - (MAX_Y - 100)) / 250 * DT * 60;
   }
 
   if (ThisSession.ResetPos == true && ThisSession.Health <= 0) {
@@ -621,6 +629,10 @@ function Frame() {
 
     let StartTime = Date.now();
     CallServer(ThisSession, "Update", (Response) => {
+      if (!Response || SomethingWentWrong) {
+        return;
+      }
+
       Get("#TotalSessions").innerHTML = "Total players: " + Response.TotalSessions;
       SessionsInGame = Response.AllSessionsInYourGame;
       Caltrops = Response.Caltrops || [];

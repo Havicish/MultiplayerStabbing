@@ -12,7 +12,7 @@ class Session {
     this.Stabbing = 0;
     this.RespawnTime = 10;
     this.LastHitBy = null;
-    this.Kills = 304958;
+    this.Kills = 0;
 
     this.ServerSetProps = {};
   }
@@ -112,8 +112,12 @@ const Server = Http.createServer((Req, Res) => {
     let Body = '';
     Req.on('data', Chunk => {
       Body = Chunk;
-      Body = JSON.parse(Body);
-      Body = Body.Message;
+      try {
+        Body = JSON.parse(Body);
+        Body = Body.Message;
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+      }
     });
 
     Req.on('end', () => {
@@ -337,9 +341,6 @@ setInterval(() => {
         Plr.ServerSetProps.Y = Plr.Y - Math.sin(Plr.Rot) * 60;
         Plr.Stabbing = .25;
         console.log(`\n${Plr.Name} stabbed ${Plr2.Name}`);
-        if (Plr.Health <= 0) {
-          Plr.Kills += 1;
-        }
       }
     }
     Plr.Stabbing -= DT;
@@ -356,6 +357,11 @@ setInterval(() => {
         Plr.ServerSetProps.ResetPos = true;
       }
       Plr.ServerSetProps.RespawnTime = Plr.RespawnTime;
+      let Killer = FindSession(Plr.LastHitBy);
+      Killer.Kills += 1;
+      Killer.ServerSetProps.Kills = Killer.Kills;
+      Killer.Health = Math.min(100, Killer.Health + 75 + Math.round(Math.random()) * 5);
+      Killer.ServerSetProps.Health = Killer.Health;
     } else {
       //Plr.ServerSetProps.Health = Math.min(100, Plr.Health + (0.75 * DT));
     }
@@ -367,8 +373,8 @@ setInterval(() => {
 
   for (let Game of Games) {
     for (let [i, Bullet] of Game.Bullets.entries()) {
-      Bullet.X += Math.cos(Bullet.Direction) * 15 * DT * 60;
-      Bullet.Y += Math.sin(Bullet.Direction) * 15 * DT * 60;
+      Bullet.X += Math.cos(Bullet.Direction) * 25 * DT * 60;
+      Bullet.Y += Math.sin(Bullet.Direction) * 25 * DT * 60;
 
       // Check collision with players
       for (let Plr of Sessions) {
@@ -379,6 +385,7 @@ setInterval(() => {
           Plr.Health -= 10;
           Plr.ServerSetProps.VelX = Math.cos(Bullet.Direction) * 10;
           Plr.ServerSetProps.VelY = Math.sin(Bullet.Direction) * 10;
+          Plr.LastHitBy = Bullet.OwnerId;
           console.log(`\n${FindSession(Bullet.OwnerId).Name} hit ${Plr.Name} with a bullet`);
           Game.Bullets.splice(i, 1);
           break;
@@ -394,8 +401,8 @@ setInterval(() => {
     for (let [i, Caltrop] of Game.Caltrops.entries()) {
       for (let Plr of Sessions) {
         if (Distance(Caltrop.X, Caltrop.Y, Plr.X, Plr.Y) <= 60 && Plr.Id != Caltrop.OwnerId && Plr.Game != undefined && Plr.Game.Id == Game.Id) {
-          Plr.ServerSetProps.Health = Plr.Health - 20;
-          Plr.Health -= 20;
+          Plr.Health -= 10;
+          Plr.ServerSetProps.Health = Plr.Health;
           let Dir = Math.atan2(Plr.Y - Caltrop.Y, Plr.X - Caltrop.X);
           Plr.ServerSetProps.VelX = Math.cos(Dir) * 10;
           Plr.ServerSetProps.VelY = Math.sin(Dir) * 10;
