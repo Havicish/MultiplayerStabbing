@@ -402,6 +402,7 @@ setInterval(() => {
       for (let Plr of Sessions) {
         if (Distance(Caltrop.X, Caltrop.Y, Plr.X, Plr.Y) <= 60 && Plr.Id != Caltrop.OwnerId && Plr.Game != undefined && Plr.Game.Id == Game.Id) {
           Plr.Health -= 10;
+          Plr.LastHitBy = Caltrop.OwnerId;
           Plr.ServerSetProps.Health = Plr.Health;
           let Dir = Math.atan2(Plr.Y - Caltrop.Y, Plr.X - Caltrop.X);
           Plr.ServerSetProps.VelX = Math.cos(Dir) * 10;
