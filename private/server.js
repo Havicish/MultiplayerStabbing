@@ -15,6 +15,7 @@ class Session {
     this.Kills = 0;
     this.HasBeenKilled = false;
     this.MoveStunned = true;
+    this.HasResetPos = false;
 
     this.ServerSetProps = {};
   }
@@ -123,16 +124,18 @@ const Server = Http.createServer((Req, Res) => {
   } else if (Req.method === 'POST' && Req.url == "/Update") {
     let Body = '';
     Req.on('data', Chunk => {
-      Body = Chunk;
+      Body += Chunk;
+    });
+
+    Req.on('end', () => {
       try {
         Body = JSON.parse(Body);
         Body = Body.Message;
       } catch (error) {
         console.error("Error parsing JSON:", error);
+        console.log("Received data:", Body);
       }
-    });
 
-    Req.on('end', () => {
       if (Body.Class != undefined && Body.Class == "Session") {
         let ThisSession = FindSession(Body.Id);
         if (ThisSession == null) {
@@ -181,12 +184,18 @@ const Server = Http.createServer((Req, Res) => {
   } else if (Req.method === 'POST' && Req.url == "/MakeGame") {
     let Body = '';
     Req.on('data', Chunk => {
-      Body = Chunk;
-      Body = JSON.parse(Body);
-      Body = Body.Message;
+      Body += Chunk;
     });
 
     Req.on('end', () => {
+      try {
+        Body = JSON.parse(Body);
+        Body = Body.Message;
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+        console.log("Received data:", Body);
+      }
+      
       let Response;
       if (FindGame(Body.Name) == null) {
         Response = new Game(Math.round(Math.random() * 100000000000));
@@ -205,12 +214,18 @@ const Server = Http.createServer((Req, Res) => {
   } else if (Req.method === 'POST' && Req.url == "/JoinGame") {
     let Body = '';
     Req.on('data', Chunk => {
-      Body = Chunk;
-      Body = JSON.parse(Body);
-      Body = Body.Message;
+      Body += Chunk;
     });
 
     Req.on('end', () => {
+      try {
+        Body = JSON.parse(Body);
+        Body = Body.Message;
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+        console.log("Received data:", Body);
+      }
+      
       let Response = FindGame(Body.Name);
 
       Res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -219,18 +234,26 @@ const Server = Http.createServer((Req, Res) => {
   } else if (Req.method === 'POST' && Req.url == "/HasResetPos") {
     let Body = '';
     Req.on('data', Chunk => {
-      Body = Chunk;
-      Body = JSON.parse(Body);
-      Body = Body.Message;
+      Body += Chunk;
     });
 
     Req.on('end', () => {
+      try {
+        Body = JSON.parse(Body);
+        Body = Body.Message;
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+        console.log("Received data:", Body);
+      }
+      
       let ThisSession = FindSession(Body.Id);
       let Response = null;
 
       if (ThisSession != null) {
-        Response = ThisSession.ServerSetProps.ResetPos == true;
-        ThisSession.ServerSetProps.ResetPos = false;
+        ThisSession.HasResetPos = true;
+        setTimeout(() => {
+          ThisSession.HasResetPos = false;
+        }, 1000);
       }
 
       Res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -239,12 +262,18 @@ const Server = Http.createServer((Req, Res) => {
   } else if (Req.method === 'POST' && Req.url == "/CreateCaltrop") {
     let Body = '';
     Req.on('data', Chunk => {
-      Body = Chunk;
-      Body = JSON.parse(Body);
-      Body = Body.Message;
+      Body += Chunk;
     });
 
     Req.on('end', () => {
+      try {
+        Body = JSON.parse(Body);
+        Body = Body.Message;
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+        console.log("Received data:", Body);
+      }
+      
       let ThisSession = FindSession(Body.Id);
       let Response = null;
       let Game = FindGame(Body.Game.Id);
@@ -259,12 +288,18 @@ const Server = Http.createServer((Req, Res) => {
   } else if (Req.method === 'POST' && Req.url == "/CreateBullet") {
     let Body = '';
     Req.on('data', Chunk => {
-      Body = Chunk;
-      Body = JSON.parse(Body);
-      Body = Body.Message;
+      Body += Chunk;
     });
 
     Req.on('end', () => {
+      try {
+        Body = JSON.parse(Body);
+        Body = Body.Message;
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+        console.log("Received data:", Body);
+      }
+      
       let ThisSession = FindSession(Body.Id);
       let Response = null;
       let Game = FindGame(Body.Game.Id);
@@ -279,12 +314,18 @@ const Server = Http.createServer((Req, Res) => {
   } else if (Req.method === 'POST' && Req.url == "/CreateEMP") {
     let Body = '';
     Req.on('data', Chunk => {
-      Body = Chunk;
-      Body = JSON.parse(Body);
-      Body = Body.Message;
+      Body += Chunk;
     });
 
     Req.on('end', () => {
+      try {
+        Body = JSON.parse(Body);
+        Body = Body.Message;
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+        console.log("Received data:", Body);
+      }
+      
       let ThisSession = FindSession(Body.Id);
       let Response = null;
       let Game = FindGame(Body.Game.Id);
@@ -308,12 +349,18 @@ const Server = Http.createServer((Req, Res) => {
   } else if (Req.method === 'POST' && Req.url == "/KillSelf") {
     let Body = '';
     Req.on('data', Chunk => {
-      Body = Chunk;
-      Body = JSON.parse(Body);
-      Body = Body.Message;
+      Body += Chunk;
     });
 
     Req.on('end', () => {
+      try {
+        Body = JSON.parse(Body);
+        Body = Body.Message;
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+        console.log("Received data:", Body);
+      }
+      
       let ThisSession = FindSession(Body.Id);
       let Response = null;
 
@@ -328,17 +375,25 @@ const Server = Http.createServer((Req, Res) => {
   } else if (Req.method === 'POST' && Req.url == "/SendChatMessage") {
     let Body = '';
     Req.on('data', Chunk => {
-      Body = Chunk;
-      Body = JSON.parse(Body);
-      Body = Body.Message;
+      Body += Chunk;
     });
 
     Req.on('end', () => {
+      try {
+        Body = JSON.parse(Body);
+        Body = Body.Message;
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+        console.log("Received data:", Body);
+      }
+      
       let ThisSession = FindSession(Body.Id);
       let Response = null;
       let Game = FindGame(Body.Game.Id);
 
       if (ThisSession != null && Game != null) {
+        if (ThisSession.Name == "")
+          ThisSession.Name = "Unnamed";
         let NewMessage = new ChatMessage(Body.Id, ThisSession.Name, Body.TryingToSendMessage);
         Game.ChatMessages.push(NewMessage);
         console.log(`\n${ThisSession.Name} sent a chat message: ${Body.TryingToSendMessage}`);
@@ -396,20 +451,29 @@ setInterval(() => {
         Plr.ServerSetProps.X = Plr.X - Math.cos(Plr.Rot) * 60;
         Plr.ServerSetProps.Y = Plr.Y - Math.sin(Plr.Rot) * 60;
         Plr.Stabbing = .25;
+        if (Plr2.Move2 == "Passive Thorns") {
+          Plr.ServerSetProps.Health = Plr.Health - 2;
+          Plr.Health -= 2;
+          Plr2.ServerSetProps.Health = Plr2.Health + 2;
+          Plr2.Health += 2;
+          Plr.LastHitBy = Plr2.Id;
+        }
         console.log(`\n${Plr.Name} stabbed ${Plr2.Name}`);
       }
     }
     Plr.Stabbing -= DT;
 
     if (Plr.Health <= 0) {
-      Plr.ServerSetProps.X = -512;
-      Plr.ServerSetProps.Y = -512;
+      if (!Plr.HasResetPos) {
+        Plr.ServerSetProps.X = -512;
+        Plr.ServerSetProps.Y = -512;
+      }
       Plr.ServerSetProps.Rot = 0;
       if (Plr.RespawnTime <= 0)
         Plr.RespawnTime = 10;
       Plr.RespawnTime -= DT;
       if (Plr.RespawnTime <= 0) {
-        //Plr.ServerSetProps.Health = 100;
+        Plr.ServerSetProps.Health = 100;
         Plr.ServerSetProps.ResetPos = true;
         Plr.LastHitBy = null;
         Plr.HasBeenKilled = false;
@@ -425,10 +489,6 @@ setInterval(() => {
       }
     } else {
       //Plr.ServerSetProps.Health = Math.min(100, Plr.Health + (0.75 * DT));
-    }
-
-    if (Plr.Name == "Plr") {
-      console.log(Plr.Stabbing);
     }
   }
 

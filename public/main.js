@@ -53,6 +53,7 @@ let Caltrops = [];
 let Bullets = [];
 let EMPs = [];
 let ChatMessages = [];
+let CookieJSON = {};
 
 let ThisSession = new Session(Math.round(Math.random() * 100000000000));
 console.log(`Your session id is: ${ThisSession.Id}\nDon't share it with anyone!`)
@@ -66,6 +67,25 @@ document.addEventListener("DOMContentLoaded", () => {
     SessionsInGame = Response.AllSessionsInYourGame;
   });
 
+  Get("#ChatSend").addEventListener("click", () => {
+    SendChatMessage();
+  });
+
+  // ✅ FIX: store the returned cookies
+  let CookieJSON = LoadCookieToJSON();
+
+  Get("#SessionName").value = CookieJSON["Name"] || ThisSession.Name;
+  ThisSession.Name = Get("#SessionName").value;
+  Get("#Move1").value = CookieJSON["Move1"] || ThisSession.Move1;
+  ThisSession.Move1 = Get("#Move1").value;
+  Get("#Move2").value = CookieJSON["Move2"] || ThisSession.Move2;
+  ThisSession.Move2 = Get("#Move2").value;
+  Get("#ForwardControl").value = CookieJSON["ForwardControl"] || "W";
+  Get("#LeftControl").value = CookieJSON["LeftControl"] || "A";
+  Get("#RightControl").value = CookieJSON["RightControl"] || "D";
+  Get("#Move1Control").value = CookieJSON["Move1Control"] || "K";
+  Get("#Move2Control").value = CookieJSON["Move2Control"] || "L";
+
   Frame();
 });
 
@@ -77,11 +97,22 @@ document.addEventListener("mousemove", (Event) => {
 
 let KeysDown = [];
 document.addEventListener("keydown", (Event) => {
-  if (KeysDown.indexOf(Event.key.toLowerCase()) == -1)
+  if (KeysDown.indexOf(Event.key.toLowerCase()) == -1 && Get("#ChatInput") != document.activeElement)
     KeysDown.push(Event.key.toLowerCase());
+
+  if (Event.key == "Enter" && document.activeElement.id == "ChatInput" && Get("#ChatInput") == document.activeElement) {
+    SendChatMessage();
+  }
+
+  if ((Event.key == "t" || Event.key == "T") && Get("#ChatInput") != document.activeElement) {
+    setTimeout(() => {
+      Get("#ChatInput").focus();
+    }, 10);
+  }
 });
 document.addEventListener("keyup", (Event) => {
-  KeysDown.splice(KeysDown.indexOf(Event.key.toLowerCase()), 1);
+  if (Get("#ChatInput") != document.activeElement)
+    KeysDown.splice(KeysDown.indexOf(Event.key.toLowerCase()), 1);
 });
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -127,6 +158,15 @@ function MakeGame() {
   ThisSession.Move1MaxCD = 0.01;
   ThisSession.Move2MaxCD = 0.01;
 
+  SaveItemToCookiesToJSON("Move1", ThisSession.Move1);
+  SaveItemToCookiesToJSON("Move2", ThisSession.Move2);
+  SaveItemToCookiesToJSON("Name", ThisSession.Name);
+  SaveItemToCookiesToJSON("ForwardControl", Get("#ForwardControl").value);
+  SaveItemToCookiesToJSON("LeftControl", Get("#LeftControl").value);
+  SaveItemToCookiesToJSON("RightControl", Get("#RightControl").value);
+  SaveItemToCookiesToJSON("Move1Control", Get("#Move1Control").value);
+  SaveItemToCookiesToJSON("Move2Control", Get("#Move2Control").value);
+
   CallServer({ Name: Get("#GameName").value }, "MakeGame", (Response) => {
     ThisSession.Game = Response;
     SetScreen("Game");
@@ -140,6 +180,15 @@ function JoinGame() {
 
   ThisSession.Move1MaxCD = 0.01;
   ThisSession.Move2MaxCD = 0.01;
+
+  SaveItemToCookiesToJSON("Move1", ThisSession.Move1);
+  SaveItemToCookiesToJSON("Move2", ThisSession.Move2);
+  SaveItemToCookiesToJSON("Name", ThisSession.Name);
+  SaveItemToCookiesToJSON("ForwardControl", Get("#ForwardControl").value);
+  SaveItemToCookiesToJSON("LeftControl", Get("#LeftControl").value);
+  SaveItemToCookiesToJSON("RightControl", Get("#RightControl").value);
+  SaveItemToCookiesToJSON("Move1Control", Get("#Move1Control").value);
+  SaveItemToCookiesToJSON("Move2Control", Get("#Move2Control").value);
 
   CallServer({ Name: Get("#GameName").value }, "JoinGame", (Response) => {
     if (Response && Response.Class && Response.Class == "Game") {
@@ -160,6 +209,25 @@ function JoinGame() {
       }, 600);
     }
   });
+}
+
+function LoadCookieToJSON() {
+  let CookieJSON = {};
+  if (document.cookie && document.cookie.trim() != "") {
+    document.cookie.split("; ").forEach(cookieStr => {
+      const [Key, Value] = cookieStr.split("=");
+      if (Key && Value != undefined) {
+        CookieJSON[decodeURIComponent(Key)] = decodeURIComponent(Value);
+      }
+    });
+  }
+  return CookieJSON;
+}
+
+function SaveItemToCookiesToJSON(ItemId, Value) {
+  let CookieJSON = LoadCookieToJSON();
+  CookieJSON[ItemId] = Value;
+  document.cookie = `${encodeURIComponent(ItemId)}=${encodeURIComponent(Value)}; path=/`;
 }
 
 function SetScreen(ScreenId) {
@@ -189,23 +257,35 @@ function IsKeyDown(Key) {
 function SendChatMessage() {
   const Input = Get("#ChatInput");
   const Message = Input.value;
+  ThisSession.TryingToSendMessage = Message;
+  Input.value = "";
+  Input.blur();
   if (Message) {
-    CallServer(ThisSession, "SendChatMessage", (Response) => {
-      if (Response && Response.Success) {
-        Input.value = "";
-      }
-    });
+    CallServer(ThisSession, "SendChatMessage", (Response) => {});
   }
 }
 
 function ShowChatMessages() {
   const ChatDiv = Get("#ChatMessages");
+  // consider we're at bottom if within 10px of the end
+  const atBottom = ChatDiv.scrollHeight - (ChatDiv.scrollTop + ChatDiv.clientHeight) <= 10;
+
+  const prevCount = ShowChatMessages._lastCount || 0;
+  const newMessageArrived = ChatMessages.length > prevCount;
+
   ChatDiv.innerHTML = "";
   for (let Msg of ChatMessages) {
     const MsgElement = document.createElement("div");
     MsgElement.className = "ChatMessage";
     MsgElement.innerHTML = `<strong>${Msg.SenderName}:</strong> ${Msg.MessageText}`;
     ChatDiv.appendChild(MsgElement);
+  }
+
+  ShowChatMessages._lastCount = ChatMessages.length;
+
+  // only auto-scroll if a new message arrived and the user was already at the bottom
+  if (newMessageArrived && atBottom) {
+    ChatDiv.scrollTop = ChatDiv.scrollHeight;
   }
 }
 
@@ -338,6 +418,10 @@ function DrawPlayers() {
       Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot - Math.PI * (1 - (Plr.Move1CD / Plr.Move1MaxCD)), Plr.Rot);
     Ctx.strokeStyle = `rgba(255, ${Plr.Health * (255 / 100)}, ${Plr.Health * (255 / 100)}, .25)`;
     Ctx.lineWidth = 10;
+    Ctx.stroke();
+    Ctx.beginPath();
+    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, 0, Math.PI*2);
+    Ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
     Ctx.stroke();
     Ctx.beginPath();
     Ctx.strokeStyle = "white";
@@ -591,9 +675,15 @@ function Frame() {
   ThisSession.VelY *= Math.pow(1 / 1.06, DT * 60);
   ThisSession.VelRot = 0;
   if (IsKeyDown(Get("#LeftControl").value.toLowerCase()))
-    ThisSession.VelRot -= 0.1;
+    if (ThisSession.Move2 != "Passive Faster Turning")
+      ThisSession.VelRot -= 0.1;
+    else
+      ThisSession.VelRot -= 0.1 * 1.3;
   if (IsKeyDown(Get("#RightControl").value.toLowerCase()))
-    ThisSession.VelRot += 0.1;
+    if (ThisSession.Move2 != "Passive Faster Turning")
+      ThisSession.VelRot += 0.1;
+    else
+      ThisSession.VelRot += 0.1 * 1.3;
 
   if (SessionsInGame.findIndex(Plr => Plr.Id == ThisSession.Id) == -1) {
     SessionsInGame.push(ThisSession);
@@ -647,8 +737,10 @@ function Frame() {
   if (ThisSession.ResetPos == true && ThisSession.Health <= 0) {
     ThisSession.X = Math.round(Math.random() * MAX_X);
     ThisSession.Y = Math.round(Math.random() * MAX_Y);
-    ThisSession.ResetPos = false;
     ThisSession.Health = 100;
+    setTimeout(() => {
+      ThisSession.ResetPos = false;
+    }, 1000);
     CallServer(ThisSession, "HasResetPos", (Response) => {});
   }
 

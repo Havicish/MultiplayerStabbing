@@ -24,11 +24,11 @@
         <br>
         <label for="SessionName">Your username:</label>
         <br>
-        <input type="text" id="SessionName" maxlength="20" placeholder="Your name" style="color: black; background-color: white;">
+        <input type="text" id="SessionName" maxlength="20" placeholder="Your name" style="color: black; background-color: #cfc;">
         <br>
         <br>
         <label for="Move1">Move 1:</label>
-        <select id="Move1" style="color: black; background-color: white;">
+        <select id="Move1" style="color: black; background-color: #fcc;">
             <option value="Dash">Dash</option>
             <option value="Back Dash">Back Dash</option>
             <option value="Quick Spin">Quick Spin</option>
@@ -43,26 +43,26 @@
         <br>
         <span id="Move1Desc">A simple dash. Cooldown of 3 seconds.</span>
         <script>
-            document.getElementById('Move1').addEventListener('change', function() {
+            document.getElementById("Move1").addEventListener("change", function() {
               const move = this.value;
               const descriptions = {
-                  'Dash': 'A simple dash. Cooldown of 3 seconds.',
-                  'Back Dash': 'A simple dash that moves backwards. Cooldown of 2 seconds.',
-                  'Phase Dash': 'A dash that allows you to move through enemies and obstacles. Cooldown of 7.5 seconds.',
-                  'Quick Spin': 'Immediate 180 degree spin. No cooldown.',
-                  'Caltrop': 'Drops a spike that damages enemies. Caltrops disappear after 10 seconds. Cooldown of 3.5 seconds.',
-                  'Shoot': 'Fire a projectile at enemies. Cooldown of 2.5 seconds.',
-                  'EMP': 'Disables nearby enemy\'s moves for 2 seconds. Cooldown of 5 seconds.',
-                  'Illusion': 'Create a decoy to confuse enemies. Cooldown of 10 seconds.',
-                  'Parry++': 'Sets up a shield that blocks incoming attacks for 3 seconds. If you are hit while the shield is active, you will take 0 damage and gain a large speed boost. Cooldown of 8 seconds.',
-                  'Shockwave': 'Emits a shockwave that knocks back nearby enemies. Cooldown of 8 seconds.'
+                "Dash": "A simple dash. Cooldown of 3 seconds.",
+                "Back Dash": "A simple dash that moves backwards. Cooldown of 2 seconds.",
+                "Phase Dash": "A dash that allows you to move through enemies and obstacles. Cooldown of 7.5 seconds.",
+                "Quick Spin": "Immediate 180 degree spin. No cooldown.",
+                "Caltrop": "Drops a spike that damages enemies. Caltrops disappear after 10 seconds. Cooldown of 3.5 seconds.",
+                "Shoot": "Fire a projectile at enemies. Cooldown of 2.5 seconds.",
+                "EMP": "Disables nearby enemy's moves for 2 seconds. Cooldown of 5 seconds.",
+                "Illusion": "Create a decoy to confuse enemies. Cooldown of 10 seconds.",
+                "Parry++": "Sets up a shield that blocks incoming attacks for 3 seconds. If you are hit while the shield is active, you will take 0 damage and gain a large speed boost. Cooldown of 8 seconds.",
+                "Shockwave": "Emits a shockwave that knocks back nearby enemies. Cooldown of 8 seconds."
               };
-              document.getElementById('Move1Desc').innerHTML = descriptions[move] || 'No description available.';
+              document.getElementById("Move1Desc").innerHTML = descriptions[move] || "No description available.";
             });
         </script>
         <br><br>
         <label for="Move2">Move 2:</label>
-        <select id="Move2" style="color: black; background-color: white;">
+        <select id="Move2" style="color: black; background-color: #fcc;">
             <option value="Dash">Dash</option>
             <option value="Back Dash">Back Dash</option>
             <option value="Quick Spin">Quick Spin</option>
@@ -79,41 +79,43 @@
             <!option value="Passive Faster Speed">(Passive) Faster Speed</option>
             <!option value="Passive Speed Based Damage">(Passive) Speed Based Damage</option>
             <!option value="Passive Dark Heart">(Passive) Dark Heart</option>
-            <!option value="Passive Thorns">(Passive) Thorns</option>
+            <option value="Passive Thorns">(Passive) Thorns</option>
+            <option value="Passive Faster Turning">(Passive) Faster Turning</option>
         </select><br>
         <span id="Move2Desc">A simple dash. Cooldown of 3 seconds.</span>
         <script>
-            document.getElementById('Move2').addEventListener('change', function() {
+            document.getElementById("Move2").addEventListener("change", function() {
               const move = this.value;
               const descriptions = {
-                  'Dash': 'A simple dash. Cooldown of 3 seconds.',
-                  'Back Dash': 'A simple dash that moves backwards. Cooldown of 2 seconds.',
-                  'Phase Dash': 'A dash that allows you to move through enemies and obstacles. Cooldown of 7.5 seconds.',
-                  'Quick Spin': 'Immediate 180 degree spin. No cooldown.',
-                  'Caltrop': 'Drops a spike that damages enemies. Caltrops disappear after 10 seconds. Cooldown of 3.5 seconds.',
-                  'Shoot': 'Fire a projectile at enemies. Cooldown of 2.5 seconds.',
-                  'EMP': 'Disables nearby enemy\'s moves for 4 seconds. Cooldown of 10 seconds.',
-                  'Illusion': 'Create a decoy to confuse enemies. Cooldown of 10 seconds.',
-                  'Parry++': 'Sets up a shield that blocks incoming attacks for 3 seconds. If you are hit while the shield is active, you will take 0 damage and gain a large speed boost. Cooldown of 8 seconds.',
-                  'Passive Regen': '(Passive) Gradually regenerates health over time (1 HP per second).',
-                  'Shockwave': 'Emits a shockwave that knocks back nearby enemies. Cooldown of 8 seconds.',
-                  'Passive Faster Cooldowns': '(Passive) Reduces ability cooldowns (2.5x faster).',
-                  'Passive Move Sensor': '(Passive) Reveals the move sets of nearby enemies.',
-                  'Passive Faster Speed': '(Passive) Increases overall movement speed (10% faster).',
-                  'Passive Speed Based Damage': '(Passive) Increases damage based on current speed (up to +50% damage).',
-                  "Passive Dark Heart": '(Passive) Gain 10 max HP with every kill, up to a maximum of 150 HP.',
-                  'Passive Thorns': '(Passive) Reflects 10% of damage taken back to the attacker.'
+                "Dash": "A simple dash. Cooldown of 3 seconds.",
+                "Back Dash": "A simple dash that moves backwards. Cooldown of 2 seconds.",
+                "Phase Dash": "A dash that allows you to move through enemies and obstacles. Cooldown of 7.5 seconds.",
+                "Quick Spin": "Immediate 180 degree spin. No cooldown.",
+                "Caltrop": "Drops a spike that damages enemies. Caltrops disappear after 10 seconds. Cooldown of 3.5 seconds.",
+                "Shoot": "Fire a projectile at enemies. Cooldown of 2.5 seconds.",
+                "EMP": "Disables nearby enemy's moves for 4 seconds. Cooldown of 10 seconds.",
+                "Illusion": "Create a decoy to confuse enemies. Cooldown of 10 seconds.",
+                "Parry++": "Sets up a shield that blocks incoming attacks for 3 seconds. If you are hit while the shield is active, you will take 0 damage and gain a large speed boost. Cooldown of 8 seconds.",
+                "Passive Regen": "(Passive) Gradually regenerates health over time (1 HP per second).",
+                "Shockwave": "Emits a shockwave that knocks back nearby enemies. Cooldown of 8 seconds.",
+                "Passive Faster Cooldowns": "(Passive) Reduces ability cooldowns (2.5x faster).",
+                "Passive Move Sensor": "(Passive) Reveals the move sets of nearby enemies.",
+                "Passive Faster Speed": "(Passive) Increases overall movement speed (10% faster).",
+                "Passive Speed Based Damage": "(Passive) Increases damage based on current speed (up to +50% damage).",
+                "Passive Dark Heart": "(Passive) Gain 10 max HP with every kill, up to a maximum of 150 HP.",
+                "Passive Thorns": "(Passive) Reflects 20% of damage taken back to the attacker.",
+                "Passive Faster Turning": "(Passive) Increases the turning speed by 30%."
               };
-              document.getElementById('Move2Desc').innerHTML = descriptions[move] || 'No description available.';
+              document.getElementById("Move2Desc").innerHTML = descriptions[move] || "No description available.";
             });
         </script>
         <br>
         <br>
-        <input type="text" id="GameName" maxlength="20" placeholder="Game name" style="color: black; background-color: white;">
+        <input type="text" id="GameName" maxlength="20" placeholder="Game name" style="color: black; background-color: #cfc;">
         <br>
-        <button id="MakeGame" onclick="MakeGame()" style="color: black; background-color: #fcf;">Make Game</button>
+        <button id="MakeGame" onclick="MakeGame()" style="color: black; background-color: #ccf;">Make Game</button>
         <br>
-        <button id="JoinGame" onclick="JoinGame()" style="color: black; background-color: #fcf;">Join Game</button>
+        <button id="JoinGame" onclick="JoinGame()" style="color: black; background-color: #ccf;">Join Game</button>
         <br>
         <br>
         <br>
@@ -129,15 +131,25 @@
         <br>
         <span>Controls:</span>
         <br>
-        <input id="ForwardControl" type="text" maxlength="1" value="W" placeholder="W" style="width: 24px;"><span> to move forward.</span>
+        <input id="ForwardControl" type="text" maxlength="1" value="W" placeholder="W" style="width: 24px; background-color: #cfc;"><span> to move forward.</span>
         <br>
-        <input id="LeftControl" type="text" maxlength="1" value="A" placeholder="A" style="width: 24px;"><span> to turn left.</span>
+        <input id="LeftControl" type="text" maxlength="1" value="A" placeholder="A" style="width: 24px; background-color: #cfc;"><span> to turn left.</span>
         <br>
-        <input id="RightControl" type="text" maxlength="1" value="D" placeholder="D" style="width: 24px;"><span> to turn right.</span>
+        <input id="RightControl" type="text" maxlength="1" value="D" placeholder="D" style="width: 24px; background-color: #cfc;"><span> to turn right.</span>
         <br>
-        <input id="Move1Control" type="text" maxlength="1" value="K" placeholder="K" style="width: 24px;"><span> to use Move 1.</span>
+        <input id="Move1Control" type="text" maxlength="1" value="K" placeholder="K" style="width: 24px; background-color: #cfc;"><span> to use Move 1.</span>
         <br>
-        <input id="Move2Control" type="text" maxlength="1" value="L" placeholder="L" style="width: 24px;"><span> to use Move 2.</span>
+        <input id="Move2Control" type="text" maxlength="1" value="L" placeholder="L" style="width: 24px; background-color: #cfc;"><span> to use Move 2.</span>
+        <br>
+        <br>
+        <br>
+        <span>Try these servers!</span>
+        <br>
+        <button id="JoinPublicServer1" style="color: black; background-color: #ccf;">Jou-sting! server 1</button>
+        <br>
+        <button id="JoinPublicServer2" style="color: black; background-color: #ccf;">Jou-sting! server 2</button>
+        <br>
+        <button id="JoinPublicServer3" style="color: black; background-color: #ccf;">Jou-sting! server 3</button>
     </div>
     <div id="Game" style="display: none;" class="Screen">
         <canvas id="Canvas" style="position: absolute; top: 0; left: 0;"></canvas>
