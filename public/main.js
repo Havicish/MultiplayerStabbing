@@ -33,6 +33,9 @@ class Session {
     this.ResetPos = false;
     this.MoveStunned = 0;
     this.TryingToSendMessage = null;
+    this.IsDev = false; // This doesn't do anything execpt for the icon. (only cosmetic)
+    this.DevPassword = ""; // Nuh uh bit-
+    this.Color = "#FF0000";
 
     Get("#SessionName").value = this.Name;
   }
@@ -71,20 +74,36 @@ document.addEventListener("DOMContentLoaded", () => {
     SendChatMessage();
   });
 
-  // ✅ FIX: store the returned cookies
   let CookieJSON = LoadCookieToJSON();
 
   Get("#SessionName").value = CookieJSON["Name"] || ThisSession.Name;
   ThisSession.Name = Get("#SessionName").value;
-  Get("#Move1").value = CookieJSON["Move1"] || ThisSession.Move1;
+  Get("#Move1").value = CookieJSON["Move1"] || "Dash";
   ThisSession.Move1 = Get("#Move1").value;
-  Get("#Move2").value = CookieJSON["Move2"] || ThisSession.Move2;
+  Get("#Move2").value = CookieJSON["Move2"] || "Dash";
   ThisSession.Move2 = Get("#Move2").value;
   Get("#ForwardControl").value = CookieJSON["ForwardControl"] || "W";
   Get("#LeftControl").value = CookieJSON["LeftControl"] || "A";
   Get("#RightControl").value = CookieJSON["RightControl"] || "D";
   Get("#Move1Control").value = CookieJSON["Move1Control"] || "K";
   Get("#Move2Control").value = CookieJSON["Move2Control"] || "L";
+
+  Get("#CharColor").value = CookieJSON["CharColor"] || "#ff0000";
+
+  Get("#JoinPublicServer1").addEventListener("click", () => {
+    Get("#GameName").value = "Jou-sting! server 1";
+    MakeGame();
+  });
+
+  Get("#JoinPublicServer2").addEventListener("click", () => {
+    Get("#GameName").value = "Jou-sting! server 2";
+    MakeGame();
+  });
+
+  Get("#JoinPublicServer3").addEventListener("click", () => {
+    Get("#GameName").value = "Jou-sting! server 3";
+    MakeGame();
+  });
 
   Frame();
 });
@@ -96,23 +115,49 @@ document.addEventListener("mousemove", (Event) => {
 });
 
 let KeysDown = [];
+let KeysDownDuringChat = [];
 document.addEventListener("keydown", (Event) => {
+  if (Event.key == null)
+    return;
+
   if (KeysDown.indexOf(Event.key.toLowerCase()) == -1 && Get("#ChatInput") != document.activeElement)
     KeysDown.push(Event.key.toLowerCase());
 
-  if (Event.key == "Enter" && document.activeElement.id == "ChatInput" && Get("#ChatInput") == document.activeElement) {
-    SendChatMessage();
-  }
+  if (KeysDownDuringChat.indexOf(Event.key.toLowerCase()) == -1 && Get("#ChatInput") == document.activeElement)
+    KeysDownDuringChat.push(Event.key.toLowerCase());
 
-  if ((Event.key == "t" || Event.key == "T") && Get("#ChatInput") != document.activeElement) {
+  if ((Event.key == "t" || Event.key == "T" || Event.key == "Enter") && Get("#ChatInput") != document.activeElement) {
     setTimeout(() => {
       Get("#ChatInput").focus();
+      for (let Key of KeysDown)
+        KeysDownDuringChat.push(Key);
     }, 10);
+  }
+
+  if (Event.key == "Enter" && document.activeElement.id == "ChatInput" && Get("#ChatInput") == document.activeElement) {
+    let ToggleChat = Get("#ToggleChat");
+    let Msgs = Get("#ChatMessages");
+    if (ToggleChat.innerText == "Show") {
+      setTimeout(() => {
+        ToggleChat.innerText = "Show";
+    Msgs.style.display = "none";
+      }, 5000);
+    }
+    ToggleChat.innerText = "Hide";
+    Msgs.style.display = "inline";
+    SendChatMessage();
+    KeysDown = KeysDownDuringChat;
+    KeysDownDuringChat = [];
   }
 });
 document.addEventListener("keyup", (Event) => {
+  if (Event.key == null)
+    return;
+
   if (Get("#ChatInput") != document.activeElement)
     KeysDown.splice(KeysDown.indexOf(Event.key.toLowerCase()), 1);
+  else
+    KeysDownDuringChat.splice(KeysDownDuringChat.indexOf(Event.key.toLowerCase()), 1);
 });
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -158,6 +203,8 @@ function MakeGame() {
   ThisSession.Move1MaxCD = 0.01;
   ThisSession.Move2MaxCD = 0.01;
 
+  ThisSession.Color = Get("#CharColor").value;
+
   SaveItemToCookiesToJSON("Move1", ThisSession.Move1);
   SaveItemToCookiesToJSON("Move2", ThisSession.Move2);
   SaveItemToCookiesToJSON("Name", ThisSession.Name);
@@ -166,11 +213,15 @@ function MakeGame() {
   SaveItemToCookiesToJSON("RightControl", Get("#RightControl").value);
   SaveItemToCookiesToJSON("Move1Control", Get("#Move1Control").value);
   SaveItemToCookiesToJSON("Move2Control", Get("#Move2Control").value);
+  SaveItemToCookiesToJSON("CharColor", Get("#CharColor").value);
 
   CallServer({ Name: Get("#GameName").value }, "MakeGame", (Response) => {
     ThisSession.Game = Response;
     SetScreen("Game");
     console.log(`Made and joined game:\n${Response.Id}, ${Response.Name}`);
+
+    ThisSession.DevPassword = Get("#DeveloperPassword").value;
+    CallServer(ThisSession, "CheckForDev", () => {});
   });
 }
 
@@ -181,6 +232,8 @@ function JoinGame() {
   ThisSession.Move1MaxCD = 0.01;
   ThisSession.Move2MaxCD = 0.01;
 
+  ThisSession.Color = Get("#CharColor").value;
+
   SaveItemToCookiesToJSON("Move1", ThisSession.Move1);
   SaveItemToCookiesToJSON("Move2", ThisSession.Move2);
   SaveItemToCookiesToJSON("Name", ThisSession.Name);
@@ -189,6 +242,7 @@ function JoinGame() {
   SaveItemToCookiesToJSON("RightControl", Get("#RightControl").value);
   SaveItemToCookiesToJSON("Move1Control", Get("#Move1Control").value);
   SaveItemToCookiesToJSON("Move2Control", Get("#Move2Control").value);
+  SaveItemToCookiesToJSON("CharColor", Get("#CharColor").value);
 
   CallServer({ Name: Get("#GameName").value }, "JoinGame", (Response) => {
     if (Response && Response.Class && Response.Class == "Game") {
@@ -208,6 +262,9 @@ function JoinGame() {
         Get("#GameName").style.color = "black";
       }, 600);
     }
+
+    ThisSession.DevPassword = Get("#DeveloperPassword").value;
+    CallServer(ThisSession, "CheckForDev", () => {});
   });
 }
 
@@ -399,16 +456,32 @@ function DrawPlayers() {
     if (Plr.Health <= 0)
       continue;
 
+    let DefaultCharColor = Plr.Color;
+
+    // Extract RGB from DefaultCharColor (assuming it's in hex like "#RRGGBB")
+    let R = parseInt(DefaultCharColor.slice(1, 3), 16);
+    let G = parseInt(DefaultCharColor.slice(3, 5), 16);
+    let B = parseInt(DefaultCharColor.slice(5, 7), 16);
+
+    let HealthRatio = Plr.Health / 100;
+
+    let InterpR = 255 - (255 - R) * (1 - HealthRatio);
+    let InterpG = 255 - (255 - G) * (1 - HealthRatio);
+    let InterpB = 255 - (255 - B) * (1 - HealthRatio);
+
+    let Color = `rgb(${InterpR}, ${InterpG}, ${InterpB})`;
+    let ColorA25 = `rgb(${InterpR}, ${InterpG}, ${InterpB}, 0.25)`
+
     Ctx.beginPath();
-    Ctx.fillStyle = `rgb(255, ${Plr.Health * (255 / 100)}, ${Plr.Health * (255 / 100)})`;
-    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 10, 0, 2*Math.PI);
+    Ctx.fillStyle = Color;
+    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 10, 0, 2 * Math.PI);
     Ctx.fill();
     Ctx.beginPath();
     if (Plr.MoveStunned > 0)
       Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot, Plr.Rot + Math.PI * Math.random());
     else
       Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot, Plr.Rot + Math.PI * (1 - (Plr.Move2CD / Plr.Move2MaxCD)));
-    Ctx.strokeStyle = `rgba(255, ${Plr.Health * (255 / 100)}, ${Plr.Health * (255 / 100)}, .25)`;
+    Ctx.strokeStyle = ColorA25;
     Ctx.lineWidth = 10;
     Ctx.stroke();
     Ctx.beginPath();
@@ -416,7 +489,7 @@ function DrawPlayers() {
       Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot - Math.PI * Math.random(), Plr.Rot);
     else
       Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot - Math.PI * (1 - (Plr.Move1CD / Plr.Move1MaxCD)), Plr.Rot);
-    Ctx.strokeStyle = `rgba(255, ${Plr.Health * (255 / 100)}, ${Plr.Health * (255 / 100)}, .25)`;
+    Ctx.strokeStyle = ColorA25;
     Ctx.lineWidth = 10;
     Ctx.stroke();
     Ctx.beginPath();
@@ -433,6 +506,15 @@ function DrawPlayers() {
     Ctx.fillStyle = "white";
     Ctx.font = "12px monospace"
     Ctx.fillText(Plr.Name, Plr.X - Plr.Name.length * 12 * 3/10 - Camera.X, Plr.Y - 20 - Camera.Y);
+
+    if (Plr.IsDev == true) {
+      let Img = new Image();
+      Img.src = "DevIcon.png";
+      Ctx.save();
+      Ctx.globalAlpha = 0.5;
+      Ctx.drawImage(Img, Plr.X - Camera.X - 16, Plr.Y - Camera.Y - 64, 32, 32);
+      Ctx.restore();
+    }
   }
 
   Ctx.beginPath();

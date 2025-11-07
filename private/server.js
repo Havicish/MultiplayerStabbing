@@ -16,6 +16,8 @@ class Session {
     this.HasBeenKilled = false;
     this.MoveStunned = true;
     this.HasResetPos = false;
+    this.IsDev = false;
+    this.DevPassword = "";
 
     this.ServerSetProps = {};
   }
@@ -397,6 +399,34 @@ const Server = Http.createServer((Req, Res) => {
         let NewMessage = new ChatMessage(Body.Id, ThisSession.Name, Body.TryingToSendMessage);
         Game.ChatMessages.push(NewMessage);
         console.log(`\n${ThisSession.Name} sent a chat message: ${Body.TryingToSendMessage}`);
+      }
+
+      Res.writeHead(200, { 'Content-Type': 'application/json' });
+      Res.end(JSON.stringify({ Response: Response }));
+    });
+  } else if (Req.method === 'POST' && Req.url == "/CheckForDev") {
+    let Body = '';
+    Req.on('data', Chunk => {
+      Body += Chunk;
+    });
+
+    Req.on('end', () => {
+      try {
+        Body = JSON.parse(Body);
+        Body = Body.Message;
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+        console.log("Received data:", Body);
+      }
+      
+      let ThisSession = FindSession(Body.Id);
+      let Response = null;
+
+      if (ThisSession != null) {
+        if (Body.DevPassword == "ForeverCryingGhostfox") {
+          ThisSession.ServerSetProps.IsDev = true;
+          ThisSession.IsDev = true;
+        }
       }
 
       Res.writeHead(200, { 'Content-Type': 'application/json' });

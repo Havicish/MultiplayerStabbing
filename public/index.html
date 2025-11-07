@@ -24,11 +24,93 @@
         <br>
         <label for="SessionName">Your username:</label>
         <br>
-        <input type="text" id="SessionName" maxlength="20" placeholder="Your name" style="color: black; background-color: #cfc;">
+        <input type="text" id="SessionName" maxlength="20" placeholder="Your name" style="color: black; background-color: #cfc;"><input type="password" id="DeveloperPassword" maxlength="25" placeholder="Dev password" style="color: black; background-color: #cfc; display: none;">
+        <script>
+          let NameInput = document.getElementById("SessionName");
+          let PassInput = document.getElementById("DeveloperPassword");
+          NameInput.addEventListener("change", () => {
+            if (NameInput.value == "Chronically Ghostly") {
+              PassInput.style.display = "inline";
+            } else {
+              PassInput.style.display = "none";
+            }
+          });
+          setTimeout(() => {
+            if (NameInput.value == "Chronically Ghostly") {
+              PassInput.style.display = "inline";
+            } else {
+              PassInput.style.display = "none";
+            }
+          }, 10);
+        </script>
+        <br>
+        <br>
+        <label for="CharColor">Character hurt color:</label>
+        <br>
+        <input id="CharColor" type="color" value="#FF0000">
+        <script>
+        function HexToHSL(Hex) {
+          Hex = Hex.replace("#", "");
+          let R = parseInt(Hex.substring(0, 2), 16) / 255;
+          let G = parseInt(Hex.substring(2, 4), 16) / 255;
+          let B = parseInt(Hex.substring(4, 6), 16) / 255;
+
+          let Max = Math.max(R, G, B);
+          let Min = Math.min(R, G, B);
+          let H, S, L = (Max + Min) / 2;
+
+          if (Max == Min) {
+            H = S = 0;
+          } else {
+            let D = Max - Min;
+            S = L > 0.5 ? D / (2 - Max - Min) : D / (Max + Min);
+            switch (Max) {
+              case R: H = (G - B) / D + (G < B ? 6 : 0); break;
+              case G: H = (B - R) / D + 2; break;
+              case B: H = (R - G) / D + 4; break;
+            }
+            H /= 6;
+          }
+          return { H, S, L };
+        }
+
+        function HSLToHex(H, S, L) {
+          let R, G, B;
+          if (S == 0) {
+            R = G = B = L;
+          } else {
+            function HueToRGB(P, Q, T) {
+              if (T < 0) T += 1;
+              if (T > 1) T -= 1;
+              if (T < 1/6) return P + (Q - P) * 6 * T;
+              if (T < 1/2) return Q;
+              if (T < 2/3) return P + (Q - P) * (2/3 - T) * 6;
+              return P;
+            }
+            let Q = L < 0.5 ? L * (1 + S) : L + S - L * S;
+            let P = 2 * L - Q;
+            R = HueToRGB(P, Q, H + 1/3);
+            G = HueToRGB(P, Q, H);
+            B = HueToRGB(P, Q, H - 1/3);
+          }
+          return "#" + [R, G, B].map(x => {
+            let Hex = Math.round(x * 255).toString(16);
+            return Hex.length == 1 ? "0" + Hex : Hex;
+          }).join("").toUpperCase();
+        }
+
+        let ColorInput = document.getElementById("CharColor");
+
+        ColorInput.addEventListener("input", function() {
+          let HSL = HexToHSL(ColorInput.value);
+          if (HSL.L > 0.5) HSL.L = 0.5; // clamp lightness
+          ColorInput.value = HSLToHex(HSL.H, HSL.S, HSL.L);
+        });
+        </script>
         <br>
         <br>
         <label for="Move1">Move 1:</label>
-        <select id="Move1" style="color: black; background-color: #fcc;">
+        <select id="Move1" style="color: black; background-color: #fcc; width: 250px;">
             <option value="Dash">Dash</option>
             <option value="Back Dash">Back Dash</option>
             <option value="Quick Spin">Quick Spin</option>
@@ -43,26 +125,32 @@
         <br>
         <span id="Move1Desc">A simple dash. Cooldown of 3 seconds.</span>
         <script>
+            const descriptions1 = {
+              "Dash": "A simple dash. Cooldown of 3 seconds.",
+              "Back Dash": "A simple dash that moves backwards. Cooldown of 2 seconds.",
+              "Phase Dash": "A dash that allows you to move through enemies and obstacles. Cooldown of 7.5 seconds.",
+              "Quick Spin": "Immediate 180 degree spin. No cooldown.",
+              "Caltrop": "Drops a spike that damages enemies. Caltrops disappear after 10 seconds. Cooldown of 3.5 seconds.",
+              "Shoot": "Fire a projectile at enemies. Cooldown of 2.5 seconds.",
+              "EMP": "Disables nearby enemy's moves for 2 seconds. Cooldown of 5 seconds.",
+              "Illusion": "Create a decoy to confuse enemies. Cooldown of 10 seconds.",
+              "Parry++": "Sets up a shield that blocks incoming attacks for 3 seconds. If you are hit while the shield is active, you will take 0 damage and gain a large speed boost. Cooldown of 8 seconds.",
+              "Shockwave": "Emits a shockwave that knocks back nearby enemies. Cooldown of 8 seconds."
+            };
             document.getElementById("Move1").addEventListener("change", function() {
               const move = this.value;
-              const descriptions = {
-                "Dash": "A simple dash. Cooldown of 3 seconds.",
-                "Back Dash": "A simple dash that moves backwards. Cooldown of 2 seconds.",
-                "Phase Dash": "A dash that allows you to move through enemies and obstacles. Cooldown of 7.5 seconds.",
-                "Quick Spin": "Immediate 180 degree spin. No cooldown.",
-                "Caltrop": "Drops a spike that damages enemies. Caltrops disappear after 10 seconds. Cooldown of 3.5 seconds.",
-                "Shoot": "Fire a projectile at enemies. Cooldown of 2.5 seconds.",
-                "EMP": "Disables nearby enemy's moves for 2 seconds. Cooldown of 5 seconds.",
-                "Illusion": "Create a decoy to confuse enemies. Cooldown of 10 seconds.",
-                "Parry++": "Sets up a shield that blocks incoming attacks for 3 seconds. If you are hit while the shield is active, you will take 0 damage and gain a large speed boost. Cooldown of 8 seconds.",
-                "Shockwave": "Emits a shockwave that knocks back nearby enemies. Cooldown of 8 seconds."
-              };
-              document.getElementById("Move1Desc").innerHTML = descriptions[move] || "No description available.";
+              document.getElementById("Move1Desc").innerHTML = descriptions1[move] || "No description available.";
+            });
+            document.addEventListener("DOMContentLoaded", () => {
+              setTimeout(() => {
+                const move = document.getElementById("Move1").value;
+                document.getElementById("Move1Desc").innerHTML = descriptions1[move] || "No description available.";
+              }, 10);
             });
         </script>
         <br><br>
         <label for="Move2">Move 2:</label>
-        <select id="Move2" style="color: black; background-color: #fcc;">
+        <select id="Move2" style="color: black; background-color: #fcc; width: 250px;">
             <option value="Dash">Dash</option>
             <option value="Back Dash">Back Dash</option>
             <option value="Quick Spin">Quick Spin</option>
@@ -84,29 +172,35 @@
         </select><br>
         <span id="Move2Desc">A simple dash. Cooldown of 3 seconds.</span>
         <script>
+            const descriptions2 = {
+              "Dash": "A simple dash. Cooldown of 3 seconds.",
+              "Back Dash": "A simple dash that moves backwards. Cooldown of 2 seconds.",
+              "Phase Dash": "A dash that allows you to move through enemies and obstacles. Cooldown of 7.5 seconds.",
+              "Quick Spin": "Immediate 180 degree spin. No cooldown.",
+              "Caltrop": "Drops a spike that damages enemies. Caltrops disappear after 10 seconds. Cooldown of 3.5 seconds.",
+              "Shoot": "Fire a projectile at enemies. Cooldown of 2.5 seconds.",
+              "EMP": "Disables nearby enemy's moves for 4 seconds. Cooldown of 10 seconds.",
+              "Illusion": "Create a decoy to confuse enemies. Cooldown of 10 seconds.",
+              "Parry++": "Sets up a shield that blocks incoming attacks for 3 seconds. If you are hit while the shield is active, you will take 0 damage and gain a large speed boost. Cooldown of 8 seconds.",
+              "Passive Regen": "(Passive) Gradually regenerates health over time (1 HP per second).",
+              "Shockwave": "Emits a shockwave that knocks back nearby enemies. Cooldown of 8 seconds.",
+              "Passive Faster Cooldowns": "(Passive) Reduces ability cooldowns (2.5x faster).",
+              "Passive Move Sensor": "(Passive) Reveals the move sets of nearby enemies.",
+              "Passive Faster Speed": "(Passive) Increases overall movement speed (10% faster).",
+              "Passive Speed Based Damage": "(Passive) Increases damage based on current speed (up to +50% damage).",
+              "Passive Dark Heart": "(Passive) Gain 10 max HP with every kill, up to a maximum of 150 HP.",
+              "Passive Thorns": "(Passive) Reflects 20% of damage taken back to the attacker.",
+              "Passive Faster Turning": "(Passive) Increases the turning speed by 30%."
+            };
             document.getElementById("Move2").addEventListener("change", function() {
               const move = this.value;
-              const descriptions = {
-                "Dash": "A simple dash. Cooldown of 3 seconds.",
-                "Back Dash": "A simple dash that moves backwards. Cooldown of 2 seconds.",
-                "Phase Dash": "A dash that allows you to move through enemies and obstacles. Cooldown of 7.5 seconds.",
-                "Quick Spin": "Immediate 180 degree spin. No cooldown.",
-                "Caltrop": "Drops a spike that damages enemies. Caltrops disappear after 10 seconds. Cooldown of 3.5 seconds.",
-                "Shoot": "Fire a projectile at enemies. Cooldown of 2.5 seconds.",
-                "EMP": "Disables nearby enemy's moves for 4 seconds. Cooldown of 10 seconds.",
-                "Illusion": "Create a decoy to confuse enemies. Cooldown of 10 seconds.",
-                "Parry++": "Sets up a shield that blocks incoming attacks for 3 seconds. If you are hit while the shield is active, you will take 0 damage and gain a large speed boost. Cooldown of 8 seconds.",
-                "Passive Regen": "(Passive) Gradually regenerates health over time (1 HP per second).",
-                "Shockwave": "Emits a shockwave that knocks back nearby enemies. Cooldown of 8 seconds.",
-                "Passive Faster Cooldowns": "(Passive) Reduces ability cooldowns (2.5x faster).",
-                "Passive Move Sensor": "(Passive) Reveals the move sets of nearby enemies.",
-                "Passive Faster Speed": "(Passive) Increases overall movement speed (10% faster).",
-                "Passive Speed Based Damage": "(Passive) Increases damage based on current speed (up to +50% damage).",
-                "Passive Dark Heart": "(Passive) Gain 10 max HP with every kill, up to a maximum of 150 HP.",
-                "Passive Thorns": "(Passive) Reflects 20% of damage taken back to the attacker.",
-                "Passive Faster Turning": "(Passive) Increases the turning speed by 30%."
-              };
-              document.getElementById("Move2Desc").innerHTML = descriptions[move] || "No description available.";
+              document.getElementById("Move2Desc").innerHTML = descriptions2[move] || "No description available.";
+            });
+            document.addEventListener("DOMContentLoaded", () => {
+              setTimeout(() => {
+                const move = document.getElementById("Move2").value;
+                document.getElementById("Move2Desc").innerHTML = descriptions2[move] || "No description available.";
+              }, 10);
             });
         </script>
         <br>
@@ -159,8 +253,22 @@
             <div id="ChatMessages" style="overflow-y: scroll; max-height: 200px; width: 300px; background-color: rgba(0, 0, 0, 0.5); padding: 5px; position: absolute; bottom: 40px; left: 10px; font-size: 14px;"></div>
             <input type="text" id="ChatInput" style="position: absolute; bottom: 10px; left: 10px; width: 240px; color: black; background-color: white;" placeholder="Type a message..." maxlength="200" />
             <button id="ChatSend" style="position: absolute; bottom: 10px; left: 260px; color: black; background-color: #fcf;">Send</button>
+            <button id="ToggleChat" style="position: absolute; bottom: 10px; left: 309px; color: black; background-color: #fcf;">Hide</button>
         </div>
     </div>
+    <script>
+      let ToggleChat = document.getElementById("ToggleChat");
+      let Msgs = document.getElementById("ChatMessages");
+      ToggleChat.addEventListener("click", () => {
+        if (ToggleChat.innerText == "Hide") {
+          ToggleChat.innerText = "Show";
+          Msgs.style.display = "none";
+        } else {
+          ToggleChat.innerText = "Hide";
+          Msgs.style.display = "inline";
+        }
+      });
+    </script>
     <script src="main.js"></script>
 </body>
 </html>
