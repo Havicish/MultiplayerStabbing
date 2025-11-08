@@ -14,9 +14,11 @@ class Session {
     this.LastHitBy = null;
     this.Kills = 0;
     this.HasBeenKilled = false;
-    this.MoveStunned = true;
+    this.MoveStunned = false;
     this.IsDev = false;
     this.DevPassword = "";
+    this.ParryingTime = 0;
+    this.Speed = 0.5;
 
     this.ServerSetProps = {};
   }
@@ -30,6 +32,7 @@ class Game {
     this.Bullets = [];
     this.Caltrops = [];
     this.EMPs = [];
+    this.Shockwaves = [];
     this.ChatMessages = [];
   }
 }
@@ -54,6 +57,17 @@ class Caltrop {
 }
 
 class EMP {
+  constructor(X, Y, OwnerId) {
+    this.X = X;
+    this.Y = Y;
+    this.OwnerId = OwnerId;
+    this.SessionsWhoSawIt = [];
+    this.LifeTime = 0.5;
+    this.Size = 5;
+  }
+}
+
+class Shockwave {
   constructor(X, Y, OwnerId) {
     this.X = X;
     this.Y = Y;
@@ -150,6 +164,8 @@ const Server = Http.createServer((Req, Res) => {
             if (Key == "LastHitBy") return;
             if (Key == "Kills") return;
             if (Key == "HasBeenKilled") return;
+            if (Key == "IsDev") return;
+            if (Key == "ParryingTime") return;
             ThisSession[Key] = Body[Key];
           });
           ThisSession.InactiveTime = 0;
@@ -161,6 +177,7 @@ const Server = Http.createServer((Req, Res) => {
       Body.AllSessionsInYourGame = [];
       for (let Session of Sessions) {
         if (Session.Game != undefined && Body.Game != undefined && Session.Game.Id == Body.Game.Id) {
+          Session.DevPassword = null;
           Body.AllSessionsInYourGame.push(Session);
         }
       }
@@ -174,6 +191,13 @@ const Server = Http.createServer((Req, Res) => {
             Body.EMPs = Body.EMPs || [];
             Body.EMPs.push(EMP);
             EMP.SessionsWhoSawIt.push(Body.Id);
+          }
+        }
+        for (let Wave of Game.Shockwaves) {
+          if (Wave.SessionsWhoSawIt && !Wave.SessionsWhoSawIt.includes(Body.Id)) {
+            Body.Shockwaves = Body.Shockwaves || [];
+            Body.Shockwaves.push(Wave);
+            Wave.SessionsWhoSawIt.push(Body.Id);
           }
         }
         Body.ChatMessages = Game.ChatMessages;
@@ -310,8 +334,45 @@ const Server = Http.createServer((Req, Res) => {
         for (let Plr of Sessions) {
           if (Plr.Id == ThisSession.Id || Plr.Game == undefined || Plr.Game.Id != Game.Id)
             continue;
-          if (Distance(ThisSession.X, ThisSession.Y, Plr.X, Plr.Y) <= 200) {
-            Plr.ServerSetProps.MoveStunned = 4;
+          if (Distance(ThisSession.X, ThisSession.Y, Plr.X, Plr.Y) <= 350) {
+            Plr.ServerSetProps.MoveStunned = 3.5;
+          }
+        }
+      }
+
+      Res.writeHead(200, { 'Content-Type': 'application/json' });
+      Res.end(JSON.stringify({ Response: Response }));
+    });
+  } else if (Req.method === 'POST' && Req.url == "/CreateShockwave") {
+    let Body = '';
+    Req.on('data', Chunk => {
+      Body += Chunk;
+    });
+
+    Req.on('end', () => {
+      try {
+        Body = JSON.parse(Body);
+        Body = Body.Message;
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+        console.log("Received data:", Body);
+      }
+      
+      let ThisSession = FindSession(Body.Id);
+      let Response = null;
+      let Game = FindGame(Body.Game.Id);
+
+      let NewShockwave = new EMP(Body.X, Body.Y, Body.Id);
+      Game.Shockwaves.push(NewShockwave);
+
+      if (ThisSession != null) {
+        for (let Plr of Sessions) {
+          if (Plr.Id == ThisSession.Id || Plr.Game == undefined || Plr.Game.Id != Game.Id)
+            continue;
+          if (Distance(ThisSession.X, ThisSession.Y, Plr.X, Plr.Y) <= 350) {
+            let Direction = Math.atan2(ThisSession.Y - Plr.Y, ThisSession.X - Plr.X);
+            Plr.ServerSetProps.VelX = -Math.cos(Direction) * 25;
+            Plr.ServerSetProps.VelY = -Math.sin(Direction) * 25;
           }
         }
       }
@@ -403,6 +464,31 @@ const Server = Http.createServer((Req, Res) => {
       Res.writeHead(200, { 'Content-Type': 'application/json' });
       Res.end(JSON.stringify({ Response: Response }));
     });
+  } else if (Req.method === 'POST' && Req.url == "/StartParry") {
+    let Body = '';
+    Req.on('data', Chunk => {
+      Body += Chunk;
+    });
+
+    Req.on('end', () => {
+      try {
+        Body = JSON.parse(Body);
+        Body = Body.Message;
+      } catch (error) {
+        console.error("Error parsing JSON:", error);
+        console.log("Received data:", Body);
+      }
+      
+      let ThisSession = FindSession(Body.Id);
+      let Response = null;
+
+      if (ThisSession != null) {
+        ThisSession.ParryingTime = 0.5;
+      }
+
+      Res.writeHead(200, { 'Content-Type': 'application/json' });
+      Res.end(JSON.stringify({ Response: Response }));
+    });
   }
 });
 
@@ -451,18 +537,30 @@ setInterval(() => {
         Plr.ServerSetProps.VelY = -Math.sin(Plr.Rot) * 10;
         Plr.ServerSetProps.X = Plr.X - Math.cos(Plr.Rot) * 60;
         Plr.ServerSetProps.Y = Plr.Y - Math.sin(Plr.Rot) * 60;
-        Plr.Stabbing = .25;
-        if (Plr2.Move2 == "Passive Thorns") {
+        Plr.Stabbing = 0.25;
+        if (Plr2.Move2 == "Passive Thorns" && Plr2.ParryingTime <= 0) {
           Plr.ServerSetProps.Health = Plr.Health - 2;
           Plr.Health -= 2;
           Plr2.ServerSetProps.Health = Plr2.Health + 2;
           Plr2.Health += 2;
           Plr.LastHitBy = Plr2.Id;
         }
+        if (Plr2.ParryingTime > 0) {
+          Plr2.ServerSetProps.Health = Math.min(Plr2.Health + 20, 100);
+          Plr2.Health = Math.min(Plr2.Health + 20, 100);
+          Plr2.ServerSetProps.Speed = Math.round((Plr2.Speed + 0.2) * 1000) / 1000;
+          Plr2.Speed = Math.round((Plr2.Speed + 0.2) * 1000) / 1000
+          setTimeout(() => {
+            Plr2.ServerSetProps.Speed = Math.round((Plr2.Speed - 0.2) * 1000) / 1000;
+            Plr2.Speed = Math.round((Plr2.Speed - 0.2) * 1000) / 1000
+          }, 2000);
+        }
         console.log(`\n${Plr.Name} stabbed ${Plr2.Name}`);
       }
     }
     Plr.Stabbing -= DT;
+    Plr.ParryingTime -= DT;
+    Plr.ServerSetProps.ParryingTime = Plr.ParryingTime;
 
     if (Plr.Health <= 0) {
       if (Plr.RespawnTime <= 0)
@@ -542,6 +640,19 @@ setInterval(() => {
       }
       if (AllSessionsInYourGame.length == EMP.SessionsWhoSawIt.length) {
         Game.EMPs.splice(i, 1);
+      }
+    }
+
+    for (let [i, Wave] of Game.Shockwaves.entries()) {
+      TotalSessions = Sessions.length;
+      AllSessionsInYourGame = [];
+      for (let Session of Sessions) {
+        if (Session.Game != undefined && Game != undefined && Session.Game.Id == Game.Id) {
+          AllSessionsInYourGame.push(Session);
+        }
+      }
+      if (AllSessionsInYourGame.length == Wave.SessionsWhoSawIt.length) {
+        Game.Shockwaves.splice(i, 1);
       }
     }
   }

@@ -36,6 +36,8 @@ class Session {
     this.IsDev = false; // This doesn't do anything execpt for the icon. (only cosmetic)
     this.DevPassword = ""; // Nuh uh bit-
     this.Color = "#FF0000";
+    this.ParryingTime = -1;
+    this.Speed = 0.5;
 
     Get("#SessionName").value = this.Name;
   }
@@ -55,6 +57,7 @@ let SessionsInGame = [];
 let Caltrops = [];
 let Bullets = [];
 let EMPs = [];
+let Shockwaves = [];
 let ChatMessages = [];
 let CookieJSON = {};
 
@@ -189,7 +192,7 @@ function CallServer(Data, Url, Callback) {
   Xhr.onerror = function () {
     SetScreen("SomethingWentWrong");
     SomethingWentWrong = true;
-    throw new Error('Network error occurred.');
+    //throw new Error('Network error occurred.');
   };
 
   // Send the data as a JSON string
@@ -410,6 +413,19 @@ function DrawGameObjs() {
     Ctx.lineWidth = 4;
     Ctx.stroke();
   }
+
+  for (let Wave of Shockwaves) {
+    if (!Wave) continue;
+
+    const x = Wave.X - Camera.X;
+    const y = Wave.Y - Camera.Y;
+
+    Ctx.beginPath();
+    Ctx.strokeStyle = `rgba(255, 255, 255, 0.5)`;
+    Ctx.arc(x, y, Wave.Size, 0, 2 * Math.PI);
+    Ctx.lineWidth = 16;
+    Ctx.stroke();
+  }
 }
 
 function CalcPlayers(DT) {
@@ -444,9 +460,21 @@ function CalcEMPs(DT) {
     if (EMP.LifeTime == undefined) EMP.LifeTime = 1;
     EMP.LifeTime -= DT * 2;
     if (!EMP.Size) EMP.Size = 0;
-    EMP.Size += DT * 400;
+    EMP.Size += DT * 1200;
     if (EMP.LifeTime <= 0) {
       EMPs.splice(EMPs.indexOf(EMP), 1);
+    }
+  }
+}
+
+function CalcShockwavess(DT) {
+  for (let Wave of Shockwaves) {
+    if (Wave.LifeTime == undefined) Wave.LifeTime = 1;
+    Wave.LifeTime -= DT * 2;
+    if (!Wave.Size) Wave.Size = 0;
+    Wave.Size += DT * 1200;
+    if (Wave.LifeTime <= 0) {
+      Shockwaves.splice(Shockwaves.indexOf(Wave), 1);
     }
   }
 }
@@ -470,7 +498,7 @@ function DrawPlayers() {
     let InterpB = 255 - (255 - B) * (1 - HealthRatio);
 
     let Color = `rgb(${InterpR}, ${InterpG}, ${InterpB})`;
-    let ColorA25 = `rgb(${InterpR}, ${InterpG}, ${InterpB}, 0.25)`
+    let ColorA25 = `rgba(${InterpR}, ${InterpG}, ${InterpB}, 0.25)`;
 
     Ctx.beginPath();
     Ctx.fillStyle = Color;
@@ -506,16 +534,22 @@ function DrawPlayers() {
     Ctx.fillStyle = "white";
     Ctx.font = "12px monospace"
     Ctx.fillText(Plr.Name, Plr.X - Plr.Name.length * 12 * 3/10 - Camera.X, Plr.Y - 20 - Camera.Y);
+    Ctx.beginPath();
+    Ctx.lineWidth = 8;
+    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 40, 0, Math.PI * 2);
+    Ctx.strokeStyle = `rgba(255, 255, 255, ${Plr.ParryingTime * 4 + 1})`;
+    Ctx.stroke();
+  }
 
+  Ctx.save();
+  let Img = Get("#DevIconImg")
+  Ctx.globalAlpha = 0.5;
+  for (Plr of SessionsInGame) {
     if (Plr.IsDev == true) {
-      let Img = new Image();
-      Img.src = "DevIcon.png";
-      Ctx.save();
-      Ctx.globalAlpha = 0.5;
       Ctx.drawImage(Img, Plr.X - Camera.X - 16, Plr.Y - Camera.Y - 64, 32, 32);
-      Ctx.restore();
     }
   }
+  Ctx.restore();
 
   Ctx.beginPath();
   Ctx.moveTo(ThisSession.X + Math.cos(ThisSession.Rot) * 60 - Camera.X, ThisSession.Y + Math.sin(ThisSession.Rot) * 60 - Camera.Y);
@@ -690,6 +724,20 @@ function Move1() {
       ThisSession.Move1CD = 10;
     });
   }
+
+  if (ThisSession.Move1 == "Shockwave") {
+    ThisSession.Move1CD = 8;
+    CallServer(ThisSession, "CreateShockwave", (Response) => {
+      ThisSession.Move1CD = 8;
+    });
+  }
+
+  if (ThisSession.Move1 == "Parry++") {
+    ThisSession.Move1CD = 8;
+    CallServer(ThisSession, "StartParry", (Response) => {
+      ThisSession.Move1CD = 8;
+    });
+  }
 }
 
 function Move2() {
@@ -737,6 +785,20 @@ function Move2() {
       ThisSession.Move2CD = 2.5;
     });
   }
+
+  if (ThisSession.Move2 == "EMP") {
+    ThisSession.Move2CD = 10;
+    CallServer(ThisSession, "CreateEMP", (Response) => {
+      ThisSession.Move2CD = 10;
+    });
+  }
+
+  if (ThisSession.Move2 == "Shockwave") {
+    ThisSession.Move2CD = 8;
+    CallServer(ThisSession, "CreateShockwave", (Response) => {
+      ThisSession.Move2CD = 8;
+    });
+  }
 }
 
 let WaitForNewData = 4;
@@ -751,8 +813,13 @@ function Frame() {
   LastRecTime = Date.now();
 
   if (IsKeyDown(Get("#ForwardControl").value.toLowerCase())) {
-    ThisSession.VelX += Math.cos(ThisSession.Rot) * DT * 60 / 2;
-    ThisSession.VelY += Math.sin(ThisSession.Rot) * DT * 60 / 2;
+    if (ThisSession.Move2 != "Passive Faster Speed") {
+      ThisSession.VelX += Math.cos(ThisSession.Rot) * DT * 60 * ThisSession.Speed;
+      ThisSession.VelY += Math.sin(ThisSession.Rot) * DT * 60 * ThisSession.Speed;
+    } else {
+      ThisSession.VelX += Math.cos(ThisSession.Rot) * DT * 60 * (ThisSession.Speed + 0.5 * 0.2);
+      ThisSession.VelY += Math.sin(ThisSession.Rot) * DT * 60 * (ThisSession.Speed + 0.5 * 0.2);
+    }
   }
 
   ThisSession.VelX *= Math.pow(1 / 1.06, DT * 60);
@@ -775,10 +842,17 @@ function Frame() {
     SessionsInGame[SessionsInGame.findIndex(Plr => Plr.Id == ThisSession.Id)] = ThisSession;
   }
 
-  ThisSession.Move1CD = Math.max(0, ThisSession.Move1CD - DT);
-  ThisSession.Move2CD = Math.max(0, ThisSession.Move2CD - DT);
+  if (ThisSession.Move2 != "Passive Faster Cooldowns") {
+    ThisSession.Move1CD = Math.max(0, ThisSession.Move1CD - DT);
+    ThisSession.Move2CD = Math.max(0, ThisSession.Move2CD - DT);
+  } else {
+    ThisSession.Move1CD = Math.max(0, ThisSession.Move1CD - DT * 2.25);
+    ThisSession.Move2CD = Math.max(0, ThisSession.Move2CD - DT * 2.25);
+  }
 
-  if (IsKeyDown(Get("#Move1Control").value.toLowerCase()) && ThisSession.MoveStunned == false) {
+  ThisSession.MoveStunned -= DT;
+
+  if (IsKeyDown(Get("#Move1Control").value.toLowerCase()) && ThisSession.MoveStunned <= 0) {
     let ShouldSetMaxCD = ThisSession.Move1CD <= 0;
     if (ThisSession.Move1 != "Quick Spin")
       Move1();
@@ -787,7 +861,7 @@ function Frame() {
     if (ShouldSetMaxCD)
       ThisSession.Move1MaxCD = Math.max(ThisSession.Move1CD, 0.01);
   } 
-  if (IsKeyDown(Get("#Move2Control").value.toLowerCase()) && ThisSession.MoveStunned == false) {
+  if (IsKeyDown(Get("#Move2Control").value.toLowerCase()) && ThisSession.MoveStunned <= 0) {
     let ShouldSetMaxCD = ThisSession.Move2CD <= 0;
     if (ThisSession.Move2 != "Quick Spin")
       Move2();
@@ -798,7 +872,7 @@ function Frame() {
   }
 
   if (IsKeyDown("j") && !LastJDown) {
-    CallServer(ThisSession, "KillSelf", (Response) => {});
+    //CallServer(ThisSession, "KillSelf", (Response) => {});
   }
 
   LastKDown = IsKeyDown(Get("#Move1Control").value.toLowerCase());
@@ -857,6 +931,10 @@ function Frame() {
         EMPs.push(EMP);
       }
 
+      for (let Wave of Response.Shockwaves || []) {
+        Shockwaves.push(Wave);
+      }
+
       ChatMessages = Response.ChatMessages || [];
 
       // For loop through all the server set properties
@@ -864,7 +942,8 @@ function Frame() {
         return;
       Object.keys(Response.ServerSetProps).forEach((Key) => {
         ThisSession[Key] = Response.ServerSetProps[Key];
-        console.log(`Updated: ${Key} to ${Response.ServerSetProps[Key]}`)
+        if (Key != "ParryingTime")
+          console.log(`Updated: ${Key} to ${Response.ServerSetProps[Key]}`)
       });
 
       Ping.push(Date.now() - StartTime);
@@ -894,10 +973,6 @@ function Frame() {
     Camera.Y += (ThisSession.Y - innerHeight / 2 - Camera.Y) / 10 * DT * 60;
   }
 
-  Get("#Log").innerHTML = EMPs.map((EMP, Index) => {
-    return `EMP ${Index}: X=${EMP.X}, Y=${EMP.Y}, LifeTime=${EMP.LifeTime}, Size=${EMP.Size}`;
-  }).join("<br>");
-
   Canvas.width = innerWidth;
   Canvas.height = innerHeight;
 
@@ -911,6 +986,7 @@ function Frame() {
   DrawDots();
   CalcBullets(DT);
   CalcEMPs(DT);
+  CalcShockwavess(DT);
   DrawGameObjs();
   CalcPlayers(DT);
   DrawPlayers();

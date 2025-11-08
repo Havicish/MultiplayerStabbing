@@ -117,10 +117,10 @@
             <option value="Phase Dash">Teleport</option>
             <option value="Caltrop">Caltrop</option>
             <option value="Shoot">Shoot</option>
-            <!option value="EMP">EMP</option>
-            <!option value="Shockwave">Shockwave</option>
+            <option value="EMP">EMP</option>
+            <option value="Shockwave">Shockwave</option>
             <!option value="Illusion">Illusion</option>
-            <!option value="Parry++">Parry++</option>
+            <option value="Parry++">Parry++</option>
         </select>
         <br>
         <span id="Move1Desc">A simple dash. Cooldown of 3 seconds.</span>
@@ -132,9 +132,9 @@
               "Quick Spin": "Immediate 180 degree spin. No cooldown.",
               "Caltrop": "Drops a spike that damages enemies. Caltrops disappear after 10 seconds. Cooldown of 3.5 seconds.",
               "Shoot": "Fire a projectile at enemies. Cooldown of 2.5 seconds.",
-              "EMP": "Disables nearby enemy's moves for 2 seconds. Cooldown of 5 seconds.",
+              "EMP": "Disables nearby enemy's moves for 3.5 seconds. Cooldown of 10 seconds.",
               "Illusion": "Create a decoy to confuse enemies. Cooldown of 10 seconds.",
-              "Parry++": "Sets up a shield that blocks incoming attacks for 3 seconds. If you are hit while the shield is active, you will take 0 damage and gain a large speed boost. Cooldown of 8 seconds.",
+              "Parry++": "Sets up a shield that blocks incoming attacks for 0.5 seconds. If you are hit while the shield is active, you will heal 10 health, and gain a small speed boost. Cooldown of 8 seconds.",
               "Shockwave": "Emits a shockwave that knocks back nearby enemies. Cooldown of 8 seconds."
             };
             document.getElementById("Move1").addEventListener("change", function() {
@@ -157,14 +157,14 @@
             <option value="Phase Dash">Teleport</option>
             <option value="Caltrop">Caltrop</option>
             <option value="Shoot">Shoot</option>
-            <!option value="EMP">EMP</option>
-            <!option value="Shockwave">Shockwave</option>
+            <option value="EMP">EMP</option>
+            <option value="Shockwave">Shockwave</option>
             <!option value="Illusion">Illusion</option>
             <!option value="Parry++">Parry++</option>
             <!option value="Passive Regen">(Passive) Health Regen</option>
-            <!option value="Passive Faster Cooldowns">(Passive) Faster Cooldowns</option>
+            <option value="Passive Faster Cooldowns">(Passive) Faster Cooldowns</option>
             <!option value="Passive Move Sensor">(Passive) Move Sensor</option>
-            <!option value="Passive Faster Speed">(Passive) Faster Speed</option>
+            <option value="Passive Faster Speed">(Passive) Faster Speed</option>
             <!option value="Passive Speed Based Damage">(Passive) Speed Based Damage</option>
             <!option value="Passive Dark Heart">(Passive) Dark Heart</option>
             <!option value="Passive Little Friend">(Passive) Little Friend</option>
@@ -180,17 +180,17 @@
               "Quick Spin": "Immediate 180 degree spin. No cooldown.",
               "Caltrop": "Drops a spike that damages enemies. Caltrops disappear after 10 seconds. Cooldown of 3.5 seconds.",
               "Shoot": "Fire a projectile at enemies. Cooldown of 2.5 seconds.",
-              "EMP": "Disables nearby enemy's moves for 4 seconds. Cooldown of 10 seconds.",
+              "EMP": "Disables nearby enemy's moves for 3.5 seconds. Cooldown of 10 seconds.",
               "Illusion": "Create a decoy to confuse enemies. Cooldown of 10 seconds.",
-              "Parry++": "Sets up a shield that blocks incoming attacks for 3 seconds. If you are hit while the shield is active, you will take 0 damage and gain a large speed boost. Cooldown of 8 seconds.",
-              "Passive Regen": "(Passive) Gradually regenerates health over time (1 HP per second).",
+              "Parry++": "Sets up a shield that blocks incoming attacks for 0.5 seconds. If you are hit while the shield is active, you will heal 10 health, and gain a small speed boost. Cooldown of 8 seconds.",
               "Shockwave": "Emits a shockwave that knocks back nearby enemies. Cooldown of 8 seconds.",
-              "Passive Faster Cooldowns": "(Passive) Reduces ability cooldowns (2.5x faster).",
+              "Passive Regen": "(Passive) Gradually regenerates health over time (1 HP per second).",
+              "Passive Faster Cooldowns": "(Passive) Reduces ability cooldowns (2.25x faster).",
               "Passive Move Sensor": "(Passive) Reveals the move sets of nearby enemies.",
-              "Passive Faster Speed": "(Passive) Increases overall movement speed (10% faster).",
+              "Passive Faster Speed": "(Passive) Increases overall movement speed (20% faster).",
               "Passive Speed Based Damage": "(Passive) Increases damage based on current speed (up to +50% damage).",
               "Passive Dark Heart": "(Passive) Gain 10 max HP with every kill, up to a maximum of 150 HP.",
-              "Passive Little Buddy": "(Passive) A little guy will follow you around and attack nearby players.",
+              "Passive Little Friend": "(Passive) A little guy will follow you around and attack nearby players. They will respawn after 15 if killed.",
               "Passive Thorns": "(Passive) Reflects 20% of damage taken back to the attacker.",
               "Passive Faster Turning": "(Passive) Increases the turning speed by 30%."
             };
@@ -272,6 +272,6 @@
       });
     </script>
     <script src="main.js"></script>
-    <img src="DevIcon.png" style="display: none;">
+    <img src="DevIcon.png" id="DevIconImg" style="display: none;">
 </body>
 </html>
