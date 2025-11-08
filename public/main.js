@@ -649,13 +649,13 @@ function Move1() {
   }
 
   if (ThisSession.Move1 == "Back Dash") {
-    ThisSession.VelX = Math.cos(ThisSession.Rot + Math.PI) * 30;
-    ThisSession.VelY = Math.sin(ThisSession.Rot + Math.PI) * 30;
+    ThisSession.VelX = Math.cos(ThisSession.Rot + Math.PI) * 50;
+    ThisSession.VelY = Math.sin(ThisSession.Rot + Math.PI) * 50;
     ThisSession.Move1CD = 2;
   }
 
   if (ThisSession.Move1 == "Phase Dash") {
-    ThisSession.Move1CD = 7.5;
+    ThisSession.Move1CD = 6;
     ThisSession.VelX = 0;
     ThisSession.VelY = 0;
     ThisSession.X += Math.cos(ThisSession.Rot) * 400;
@@ -703,13 +703,13 @@ function Move2() {
   }
 
   if (ThisSession.Move2 == "Back Dash") {
-    ThisSession.VelX = Math.cos(ThisSession.Rot + Math.PI) * 30;
-    ThisSession.VelY = Math.sin(ThisSession.Rot + Math.PI) * 30;
+    ThisSession.VelX = Math.cos(ThisSession.Rot + Math.PI) * 50;
+    ThisSession.VelY = Math.sin(ThisSession.Rot + Math.PI) * 50;
     ThisSession.Move2CD = 2;
   }
 
   if (ThisSession.Move2 == "Phase Dash") {
-    ThisSession.Move2CD = 7.5;
+    ThisSession.Move2CD = 6;
     ThisSession.VelX = 0;
     ThisSession.VelY = 0;
     ThisSession.X += Math.cos(ThisSession.Rot) * 400;
@@ -742,8 +742,10 @@ function Move2() {
 let WaitForNewData = 4;
 let LastKDown = false;
 let LastLDown = false;
+let LastJDown = false;
 let Ping = [];
 let LastRecTime = Date.now();
+let LastHealth = ThisSession.Health;
 function Frame() {
   let DT = (Date.now() - LastRecTime) / 1000;
   LastRecTime = Date.now();
@@ -794,8 +796,14 @@ function Frame() {
     if (ShouldSetMaxCD)
       ThisSession.Move2MaxCD = Math.max(ThisSession.Move2CD, 0.01);
   }
+
+  if (IsKeyDown("j") && !LastJDown) {
+    CallServer(ThisSession, "KillSelf", (Response) => {});
+  }
+
   LastKDown = IsKeyDown(Get("#Move1Control").value.toLowerCase());
   LastLDown = IsKeyDown(Get("#Move2Control").value.toLowerCase());
+  LastJDown = IsKeyDown("j");
 
   ThisSession.X += ThisSession.VelX * DT * 60;
   ThisSession.Y += ThisSession.VelY * DT * 60;
@@ -814,17 +822,20 @@ function Frame() {
     if (ThisSession.Y < 100) ThisSession.VelY += (100 - ThisSession.Y) / 250 * DT * 60;
     if (ThisSession.X > MAX_X - 100) ThisSession.VelX -= (ThisSession.X - (MAX_X - 100)) / 250 * DT * 60;
     if (ThisSession.Y > MAX_Y - 100) ThisSession.VelY -= (ThisSession.Y - (MAX_Y - 100)) / 250 * DT * 60;
+  } else {
+    ThisSession.X = -512;
+    ThisSession.Y = -512;
+    ThisSession.VelX = 0;
+    ThisSession.VelY = 0;
+    ThisSession.Rot = 0;
   }
 
-  if (ThisSession.ResetPos == true && ThisSession.Health <= 0) {
+  if (ThisSession.Health > 0 && LastHealth <= 0) {
     ThisSession.X = Math.round(Math.random() * MAX_X);
     ThisSession.Y = Math.round(Math.random() * MAX_Y);
     ThisSession.Health = 100;
-    setTimeout(() => {
-      ThisSession.ResetPos = false;
-    }, 1000);
-    CallServer(ThisSession, "HasResetPos", (Response) => {});
   }
+  LastHealth = ThisSession.Health;
 
   WaitForNewData -= 1 * DT;
 

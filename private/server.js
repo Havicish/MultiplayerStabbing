@@ -15,7 +15,6 @@ class Session {
     this.Kills = 0;
     this.HasBeenKilled = false;
     this.MoveStunned = true;
-    this.HasResetPos = false;
     this.IsDev = false;
     this.DevPassword = "";
 
@@ -229,34 +228,6 @@ const Server = Http.createServer((Req, Res) => {
       }
       
       let Response = FindGame(Body.Name);
-
-      Res.writeHead(200, { 'Content-Type': 'application/json' });
-      Res.end(JSON.stringify({ Response: Response }));
-    });
-  } else if (Req.method === 'POST' && Req.url == "/HasResetPos") {
-    let Body = '';
-    Req.on('data', Chunk => {
-      Body += Chunk;
-    });
-
-    Req.on('end', () => {
-      try {
-        Body = JSON.parse(Body);
-        Body = Body.Message;
-      } catch (error) {
-        console.error("Error parsing JSON:", error);
-        console.log("Received data:", Body);
-      }
-      
-      let ThisSession = FindSession(Body.Id);
-      let Response = null;
-
-      if (ThisSession != null) {
-        ThisSession.HasResetPos = true;
-        setTimeout(() => {
-          ThisSession.HasResetPos = false;
-        }, 1000);
-      }
 
       Res.writeHead(200, { 'Content-Type': 'application/json' });
       Res.end(JSON.stringify({ Response: Response }));
@@ -494,17 +465,11 @@ setInterval(() => {
     Plr.Stabbing -= DT;
 
     if (Plr.Health <= 0) {
-      if (!Plr.HasResetPos) {
-        Plr.ServerSetProps.X = -512;
-        Plr.ServerSetProps.Y = -512;
-      }
-      Plr.ServerSetProps.Rot = 0;
       if (Plr.RespawnTime <= 0)
         Plr.RespawnTime = 10;
       Plr.RespawnTime -= DT;
       if (Plr.RespawnTime <= 0) {
         Plr.ServerSetProps.Health = 100;
-        Plr.ServerSetProps.ResetPos = true;
         Plr.LastHitBy = null;
         Plr.HasBeenKilled = false;
       }
