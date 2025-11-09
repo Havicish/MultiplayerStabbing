@@ -22,7 +22,6 @@ class Session {
     this.Speed = 0.5;
     this.Invincibility = false;
     this.Alpha = 1;
-    this.DevGhostCD = 0;
 
     this.ServerSetProps = {};
   }
@@ -585,8 +584,6 @@ setInterval(() => {
     Plr.Stabbing -= DT;
     Plr.ParryingTime -= DT;
     Plr.ServerSetProps.ParryingTime = Plr.ParryingTime;
-    Plr.DevGhostCD -= DT;
-    Plr.ServerSetProps.DevGhostCD = Plr.DevGhostCD;
     if (Plr.Invincibility) {
       Plr.Alpha = 0.562;
       Plr.ServerSetProps.Alpha = 0.562;
@@ -594,7 +591,7 @@ setInterval(() => {
       Plr.Alpha = 1;
       Plr.ServerSetProps.Alpha = 1;
     }
-    if (Plr.DevGhostCD <= 0 && Plr.Invincibility) {
+    if (Plr.Invincibility) {
       Plr.DevGhostCD = 0;
       let Ghost = new GhostChar(Plr.Id);
       let Game = FindGame(Plr.Game.Id);

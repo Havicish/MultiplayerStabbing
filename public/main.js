@@ -40,7 +40,6 @@ class Session {
     this.Speed = 0.5;
     this.Invincibility = false;
     this.Alpha = 1;
-    this.DevGhostCD = 0;
 
     Get("#SessionName").value = this.Name;
   }
