@@ -28,8 +28,8 @@ class Session {
     this.Move2CD = 0;
     this.Move1MaxCD = 3;
     this.Move2MaxCD = 3;
-    this.Move1 = "Phase Dash";
-    this.Move2 = "Quick Spin";
+    this.Move1 = "Dash";
+    this.Move2 = "Dash";
     this.ResetPos = false;
     this.MoveStunned = 0;
     this.TryingToSendMessage = null;
@@ -38,6 +38,9 @@ class Session {
     this.Color = "#FF0000";
     this.ParryingTime = -1;
     this.Speed = 0.5;
+    this.Invincibility = false;
+    this.Alpha = 1;
+    this.DevGhostCD = 0;
 
     Get("#SessionName").value = this.Name;
   }
@@ -59,6 +62,7 @@ let Bullets = [];
 let EMPs = [];
 let Shockwaves = [];
 let ChatMessages = [];
+let GhostChars = [];
 let CookieJSON = {};
 
 let ThisSession = new Session(Math.round(Math.random() * 100000000000));
@@ -106,6 +110,14 @@ document.addEventListener("DOMContentLoaded", () => {
   Get("#JoinPublicServer3").addEventListener("click", () => {
     Get("#GameName").value = "Jou-sting! server 3";
     MakeGame();
+  });
+
+  let DamageButton = Get("#DevTakeDamage");
+  DamageButton.addEventListener("click", () => {
+    if (DamageButton.style.backgroundColor == "rgb(255, 0, 0)")
+      DamageButton.style.backgroundColor = "rgb(0, 255, 0)";
+    else
+      DamageButton.style.backgroundColor = "rgb(255, 0, 0)";
   });
 
   Frame();
@@ -445,6 +457,8 @@ function CalcPlayers(DT) {
     if (Plr.Y < 0) Plr.Y = 0;
     if (Plr.X > MAX_X) Plr.X = MAX_X;
     if (Plr.Y > MAX_Y) Plr.Y = MAX_Y;
+
+    Plr.ParryingTime -= DT;
   }
 }
 
@@ -479,73 +493,87 @@ function CalcShockwavess(DT) {
   }
 }
 
+function DrawPlayer(Plr) {
+  if (Plr.Health <= 0)
+    return;
+
+  let DefaultCharColor = Plr.Color;
+
+  // Extract RGB from DefaultCharColor (assuming it's in hex like "#RRGGBB")
+  let R = parseInt(DefaultCharColor.slice(1, 3), 16);
+  let G = parseInt(DefaultCharColor.slice(3, 5), 16);
+  let B = parseInt(DefaultCharColor.slice(5, 7), 16);
+
+  let HealthRatio = Plr.Health / 100;
+
+  let InterpR = 255 - (255 - R) * (1 - HealthRatio);
+  let InterpG = 255 - (255 - G) * (1 - HealthRatio);
+  let InterpB = 255 - (255 - B) * (1 - HealthRatio);
+
+  let Color = `rgba(${InterpR}, ${InterpG}, ${InterpB}, ${Plr.Alpha})`;
+  let ColorA25 = `rgba(${InterpR}, ${InterpG}, ${InterpB}, ${Plr.Alpha * 0.25})`;
+
+  Ctx.beginPath();
+  Ctx.fillStyle = Color;
+  Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 10, 0, 2 * Math.PI);
+  Ctx.fill();
+  Ctx.beginPath();
+  if (Plr.MoveStunned > 0)
+    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot, Plr.Rot + Math.PI * Math.random());
+  else
+    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot, Plr.Rot + Math.PI * (1 - (Plr.Move2CD / Plr.Move2MaxCD)));
+  Ctx.strokeStyle = ColorA25;
+  Ctx.lineWidth = 10;
+  Ctx.stroke();
+  Ctx.beginPath();
+  if (Plr.MoveStunned > 0)
+    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot - Math.PI * Math.random(), Plr.Rot);
+  else
+    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot - Math.PI * (1 - (Plr.Move1CD / Plr.Move1MaxCD)), Plr.Rot);
+  Ctx.strokeStyle = ColorA25;
+  Ctx.lineWidth = 10;
+  Ctx.stroke();
+  Ctx.beginPath();
+  Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, 0, Math.PI*2);
+  Ctx.strokeStyle = `rgba(255, 255, 255, ${Plr.Alpha * 0.15})`;
+  Ctx.stroke();
+  Ctx.beginPath();
+  Ctx.strokeStyle = `rgba(255, 255, 255, ${Plr.Alpha})`;
+  Ctx.moveTo(Plr.X + Math.cos(Plr.Rot) * 5 - Camera.X, Plr.Y + Math.sin(Plr.Rot) * 5 - Camera.Y);
+  Ctx.lineTo(Plr.X + Math.cos(Plr.Rot) * 60 - Camera.X, Plr.Y + Math.sin(Plr.Rot) * 60 - Camera.Y);
+  Ctx.lineWidth = 1;
+  Ctx.stroke();
+  Ctx.beginPath();
+  Ctx.fillStyle = `rgba(255, 255, 255, ${Plr.Alpha})`;
+  Ctx.font = "12px monospace"
+  Ctx.fillText(Plr.Name, Plr.X - Plr.Name.length * 12 * 3/10 - Camera.X, Plr.Y - 20 - Camera.Y);
+  Ctx.beginPath();
+  Ctx.lineWidth = 8;
+  Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 40, 0, Math.PI * 2);
+  let SheildAlpha = Plr.ParryingTime * 4 + 1;
+  Ctx.strokeStyle = `rgba(255, 255, 255, ${SheildAlpha * Plr.Alpha})`;
+  Ctx.stroke();
+}
+
 function DrawPlayers() {
   for (let Plr of SessionsInGame) {
-    if (Plr.Health <= 0)
-      continue;
-
-    let DefaultCharColor = Plr.Color;
-
-    // Extract RGB from DefaultCharColor (assuming it's in hex like "#RRGGBB")
-    let R = parseInt(DefaultCharColor.slice(1, 3), 16);
-    let G = parseInt(DefaultCharColor.slice(3, 5), 16);
-    let B = parseInt(DefaultCharColor.slice(5, 7), 16);
-
-    let HealthRatio = Plr.Health / 100;
-
-    let InterpR = 255 - (255 - R) * (1 - HealthRatio);
-    let InterpG = 255 - (255 - G) * (1 - HealthRatio);
-    let InterpB = 255 - (255 - B) * (1 - HealthRatio);
-
-    let Color = `rgb(${InterpR}, ${InterpG}, ${InterpB})`;
-    let ColorA25 = `rgba(${InterpR}, ${InterpG}, ${InterpB}, 0.25)`;
-
-    Ctx.beginPath();
-    Ctx.fillStyle = Color;
-    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 10, 0, 2 * Math.PI);
-    Ctx.fill();
-    Ctx.beginPath();
-    if (Plr.MoveStunned > 0)
-      Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot, Plr.Rot + Math.PI * Math.random());
-    else
-      Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot, Plr.Rot + Math.PI * (1 - (Plr.Move2CD / Plr.Move2MaxCD)));
-    Ctx.strokeStyle = ColorA25;
-    Ctx.lineWidth = 10;
-    Ctx.stroke();
-    Ctx.beginPath();
-    if (Plr.MoveStunned > 0)
-      Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot - Math.PI * Math.random(), Plr.Rot);
-    else
-      Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, Plr.Rot - Math.PI * (1 - (Plr.Move1CD / Plr.Move1MaxCD)), Plr.Rot);
-    Ctx.strokeStyle = ColorA25;
-    Ctx.lineWidth = 10;
-    Ctx.stroke();
-    Ctx.beginPath();
-    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 25, 0, Math.PI*2);
-    Ctx.strokeStyle = "rgba(255, 255, 255, 0.15)";
-    Ctx.stroke();
-    Ctx.beginPath();
-    Ctx.strokeStyle = "white";
-    Ctx.moveTo(Plr.X + Math.cos(Plr.Rot) * 5 - Camera.X, Plr.Y + Math.sin(Plr.Rot) * 5 - Camera.Y);
-    Ctx.lineTo(Plr.X + Math.cos(Plr.Rot) * 60 - Camera.X, Plr.Y + Math.sin(Plr.Rot) * 60 - Camera.Y);
-    Ctx.lineWidth = 1;
-    Ctx.stroke();
-    Ctx.beginPath();
-    Ctx.fillStyle = "white";
-    Ctx.font = "12px monospace"
-    Ctx.fillText(Plr.Name, Plr.X - Plr.Name.length * 12 * 3/10 - Camera.X, Plr.Y - 20 - Camera.Y);
-    Ctx.beginPath();
-    Ctx.lineWidth = 8;
-    Ctx.arc(Plr.X - Camera.X, Plr.Y - Camera.Y, 40, 0, Math.PI * 2);
-    Ctx.strokeStyle = `rgba(255, 255, 255, ${Plr.ParryingTime * 4 + 1})`;
-    Ctx.stroke();
+    DrawPlayer(Plr);
+  }
+  for (let Plr of GhostChars) {
+    DrawPlayer(Plr);
   }
 
   Ctx.save();
   let Img = Get("#DevIconImg")
-  Ctx.globalAlpha = 0.5;
   for (Plr of SessionsInGame) {
     if (Plr.IsDev == true) {
+      Ctx.globalAlpha = 0.5 * Math.max(Plr.Alpha, 0);
+      Ctx.drawImage(Img, Plr.X - Camera.X - 16, Plr.Y - Camera.Y - 64, 32, 32);
+    }
+  }
+  for (Plr of GhostChars) {
+    if (Plr.IsDev == true) {
+      Ctx.globalAlpha = 0.5 * Math.max(Plr.Alpha, 0);
       Ctx.drawImage(Img, Plr.X - Camera.X - 16, Plr.Y - Camera.Y - 64, 32, 32);
     }
   }
@@ -726,9 +754,9 @@ function Move1() {
   }
 
   if (ThisSession.Move1 == "Shockwave") {
-    ThisSession.Move1CD = 8;
+    ThisSession.Move1CD = 5;
     CallServer(ThisSession, "CreateShockwave", (Response) => {
-      ThisSession.Move1CD = 8;
+      ThisSession.Move1CD = 5;
     });
   }
 
@@ -794,8 +822,15 @@ function Move2() {
   }
 
   if (ThisSession.Move2 == "Shockwave") {
-    ThisSession.Move2CD = 8;
+    ThisSession.Move2CD = 5;
     CallServer(ThisSession, "CreateShockwave", (Response) => {
+      ThisSession.Move2CD = 5;
+    });
+  }
+
+  if (ThisSession.Move2 == "Parry++") {
+    ThisSession.Move2CD = 8;
+    CallServer(ThisSession, "StartParry", (Response) => {
       ThisSession.Move2CD = 8;
     });
   }
@@ -809,7 +844,7 @@ let Ping = [];
 let LastRecTime = Date.now();
 let LastHealth = ThisSession.Health;
 function Frame() {
-  let DT = (Date.now() - LastRecTime) / 1000;
+  let DT = Math.min((Date.now() - LastRecTime) / 1000, 0.5);
   LastRecTime = Date.now();
 
   if (IsKeyDown(Get("#ForwardControl").value.toLowerCase())) {
@@ -907,9 +942,11 @@ function Frame() {
   if (ThisSession.Health > 0 && LastHealth <= 0) {
     ThisSession.X = Math.round(Math.random() * MAX_X);
     ThisSession.Y = Math.round(Math.random() * MAX_Y);
-    ThisSession.Health = 100;
   }
   LastHealth = ThisSession.Health;
+
+  ThisSession.Invincibility = Get("#DevTakeDamage").style.backgroundColor == "rgb(0, 255, 0)";
+  Get("#DevTakeDamage").style.display = ThisSession.IsDev ? "inline" : "none";
 
   WaitForNewData -= 1 * DT;
 
@@ -926,6 +963,8 @@ function Frame() {
       SessionsInGame = Response.AllSessionsInYourGame;
       Caltrops = Response.Caltrops || [];
       Bullets = Response.Bullets || [];
+      ChatMessages = Response.ChatMessages || [];
+      GhostChars = Response.GhostChars || [];
 
       for (let EMP of Response.EMPs || []) {
         EMPs.push(EMP);
@@ -934,8 +973,6 @@ function Frame() {
       for (let Wave of Response.Shockwaves || []) {
         Shockwaves.push(Wave);
       }
-
-      ChatMessages = Response.ChatMessages || [];
 
       // For loop through all the server set properties
       if (Response.ServerSetProps == undefined)
@@ -962,6 +999,7 @@ function Frame() {
       } else {
         Get("#Ping").style.color = "red";
       }
+      Get("#DevTakeDamage").style.left = `${Get("#Ping").innerHTML.length * 8.52}px`;
     });
     WaitForNewData += (2 / 60);
   }

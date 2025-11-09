@@ -8,6 +8,7 @@ class Session {
     this.Id = Id;
     this.InactiveTime = 0;
     this.Class = "Session";
+    this.Name = "";
     this.Health = 100;
     this.Stabbing = 0;
     this.RespawnTime = 10;
@@ -17,10 +18,27 @@ class Session {
     this.MoveStunned = false;
     this.IsDev = false;
     this.DevPassword = "";
-    this.ParryingTime = 0;
+    this.ParryingTime = -2;
     this.Speed = 0.5;
+    this.Invincibility = false;
+    this.Alpha = 1;
+    this.DevGhostCD = 0;
 
     this.ServerSetProps = {};
+  }
+}
+
+class GhostChar {
+  constructor(Id) {
+    this.Id = Id;
+
+    let ThisSession = FindSession(Id);
+    Object.keys(ThisSession).forEach((Key) => {
+      this[Key] = ThisSession[Key];
+    });
+
+    this.Alpha = 0.1;
+    this.LifeTime = 0.4;
   }
 }
 
@@ -34,6 +52,7 @@ class Game {
     this.EMPs = [];
     this.Shockwaves = [];
     this.ChatMessages = [];
+    this.GhostChars = [];
   }
 }
 
@@ -166,6 +185,9 @@ const Server = Http.createServer((Req, Res) => {
             if (Key == "HasBeenKilled") return;
             if (Key == "IsDev") return;
             if (Key == "ParryingTime") return;
+            if (Key == "Invincibility" && ThisSession.IsDev == false) return;
+            if (Key == "Health") return;
+            if (Key == "DevGhostCD") return;
             ThisSession[Key] = Body[Key];
           });
           ThisSession.InactiveTime = 0;
@@ -201,6 +223,7 @@ const Server = Http.createServer((Req, Res) => {
           }
         }
         Body.ChatMessages = Game.ChatMessages;
+        Body.GhostChars = Game.GhostChars;
       }
 
       Res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -362,7 +385,7 @@ const Server = Http.createServer((Req, Res) => {
       let Response = null;
       let Game = FindGame(Body.Game.Id);
 
-      let NewShockwave = new EMP(Body.X, Body.Y, Body.Id);
+      let NewShockwave = new Shockwave(Body.X, Body.Y, Body.Id);
       Game.Shockwaves.push(NewShockwave);
 
       if (ThisSession != null) {
@@ -483,7 +506,7 @@ const Server = Http.createServer((Req, Res) => {
       let Response = null;
 
       if (ThisSession != null) {
-        ThisSession.ParryingTime = 0.5;
+        ThisSession.ParryingTime = 1;
       }
 
       Res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -527,7 +550,7 @@ setInterval(() => {
     for (let Plr2 of Sessions) {
       if (Plr == Plr2 || Plr.Stabbing > 0 || Plr2.Health <= 0 || Plr.Game == undefined || Plr2.Game == undefined || Plr.Game.Id != Plr2.Game.Id)
         continue;
-      if (Distance(Plr.X + Math.cos(Plr.Rot) * 60, Plr.Y + Math.sin(Plr.Rot) * 60, Plr2.X + Math.cos(Plr2.Rot), Plr2.Y + Math.sin(Plr2.Rot)) < 50) {
+      if (Distance(Plr.X + Math.cos(Plr.Rot) * 60, Plr.Y + Math.sin(Plr.Rot) * 60, Plr2.X + Math.cos(Plr2.Rot), Plr2.Y + Math.sin(Plr2.Rot)) < 50 && Plr2.Invincibility == false && Plr.Invincibility == false) {
         Plr2.ServerSetProps.Health = Plr2.Health - 10;
         Plr2.Health -= 10;
         Plr2.ServerSetProps.VelX = Math.cos(Plr.Rot) * 5;
@@ -546,14 +569,15 @@ setInterval(() => {
           Plr.LastHitBy = Plr2.Id;
         }
         if (Plr2.ParryingTime > 0) {
+          Plr2.ParryingTime = -20;
           Plr2.ServerSetProps.Health = Math.min(Plr2.Health + 20, 100);
           Plr2.Health = Math.min(Plr2.Health + 20, 100);
-          Plr2.ServerSetProps.Speed = Math.round((Plr2.Speed + 0.2) * 1000) / 1000;
-          Plr2.Speed = Math.round((Plr2.Speed + 0.2) * 1000) / 1000
+          Plr2.ServerSetProps.Speed = Math.round((Plr2.Speed + 0.5) * 1000) / 1000;
+          Plr2.Speed = Math.round((Plr2.Speed + 0.5) * 1000) / 1000
           setTimeout(() => {
-            Plr2.ServerSetProps.Speed = Math.round((Plr2.Speed - 0.2) * 1000) / 1000;
-            Plr2.Speed = Math.round((Plr2.Speed - 0.2) * 1000) / 1000
-          }, 2000);
+            Plr2.ServerSetProps.Speed = Math.round((Plr2.Speed - 0.5) * 1000) / 1000;
+            Plr2.Speed = Math.round((Plr2.Speed - 0.5) * 1000) / 1000
+          }, 1000);
         }
         console.log(`\n${Plr.Name} stabbed ${Plr2.Name}`);
       }
@@ -561,6 +585,21 @@ setInterval(() => {
     Plr.Stabbing -= DT;
     Plr.ParryingTime -= DT;
     Plr.ServerSetProps.ParryingTime = Plr.ParryingTime;
+    Plr.DevGhostCD -= DT;
+    Plr.ServerSetProps.DevGhostCD = Plr.DevGhostCD;
+    if (Plr.Invincibility) {
+      Plr.Alpha = 0.562;
+      Plr.ServerSetProps.Alpha = 0.562;
+    } else if (Plr.Alpha <= 0.564 && Plr.Alpha >= 0.560) {
+      Plr.Alpha = 1;
+      Plr.ServerSetProps.Alpha = 1;
+    }
+    if (Plr.DevGhostCD <= 0 && Plr.Invincibility) {
+      Plr.DevGhostCD = 0;
+      let Ghost = new GhostChar(Plr.Id);
+      let Game = FindGame(Plr.Game.Id);
+      Game.GhostChars.push(Ghost);
+    }
 
     if (Plr.Health <= 0) {
       if (Plr.RespawnTime <= 0)
@@ -568,6 +607,7 @@ setInterval(() => {
       Plr.RespawnTime -= DT;
       if (Plr.RespawnTime <= 0) {
         Plr.ServerSetProps.Health = 100;
+        Plr.Health = 100;
         Plr.LastHitBy = null;
         Plr.HasBeenKilled = false;
       }
@@ -653,6 +693,14 @@ setInterval(() => {
       }
       if (AllSessionsInYourGame.length == Wave.SessionsWhoSawIt.length) {
         Game.Shockwaves.splice(i, 1);
+      }
+    }
+
+    for (let [i, Ghost] of Game.GhostChars.entries()) {
+      Ghost.LifeTime -= DT;
+      Ghost.Alpha -= DT / (0.4 / 0.1);
+      if (Ghost.LifeTime <= 0) {
+        Game.GhostChars.splice(i, 1);
       }
     }
   }

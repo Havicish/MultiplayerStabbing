@@ -28,7 +28,7 @@
         <script>
           let NameInput = document.getElementById("SessionName");
           let PassInput = document.getElementById("DeveloperPassword");
-          NameInput.addEventListener("change", () => {
+          NameInput.addEventListener("input", () => {
             if (NameInput.value == "Chronically Ghostly") {
               PassInput.style.display = "inline";
             } else {
@@ -41,7 +41,7 @@
             } else {
               PassInput.style.display = "none";
             }
-          }, 10);
+          }, 25);
         </script>
         <br>
         <br>
@@ -134,8 +134,8 @@
               "Shoot": "Fire a projectile at enemies. Cooldown of 2.5 seconds.",
               "EMP": "Disables nearby enemy's moves for 3.5 seconds. Cooldown of 10 seconds.",
               "Illusion": "Create a decoy to confuse enemies. Cooldown of 10 seconds.",
-              "Parry++": "Sets up a shield that blocks incoming attacks for 0.5 seconds. If you are hit while the shield is active, you will heal 10 health, and gain a small speed boost. Cooldown of 8 seconds.",
-              "Shockwave": "Emits a shockwave that knocks back nearby enemies. Cooldown of 8 seconds."
+              "Parry++": "Sets up a shield that blocks incoming attacks for 1 second. If you are hit while the shield is active, you will heal 10 health, and gain a small speed boost. Cooldown of 8 seconds.",
+              "Shockwave": "Emits a shockwave that knocks back nearby enemies. Cooldown of 5 seconds."
             };
             document.getElementById("Move1").addEventListener("change", function() {
               const move = this.value;
@@ -182,8 +182,8 @@
               "Shoot": "Fire a projectile at enemies. Cooldown of 2.5 seconds.",
               "EMP": "Disables nearby enemy's moves for 3.5 seconds. Cooldown of 10 seconds.",
               "Illusion": "Create a decoy to confuse enemies. Cooldown of 10 seconds.",
-              "Parry++": "Sets up a shield that blocks incoming attacks for 0.5 seconds. If you are hit while the shield is active, you will heal 10 health, and gain a small speed boost. Cooldown of 8 seconds.",
-              "Shockwave": "Emits a shockwave that knocks back nearby enemies. Cooldown of 8 seconds.",
+              "Parry++": "Sets up a shield that blocks incoming attacks for 1 second. If you are hit while the shield is active, you will heal 10 health, and gain a small speed boost. Cooldown of 8 seconds.",
+              "Shockwave": "Emits a shockwave that knocks back nearby enemies. Cooldown of 5 seconds.",
               "Passive Regen": "(Passive) Gradually regenerates health over time (1 HP per second).",
               "Passive Faster Cooldowns": "(Passive) Reduces ability cooldowns (2.25x faster).",
               "Passive Move Sensor": "(Passive) Reveals the move sets of nearby enemies.",
@@ -249,13 +249,15 @@
     </div>
     <div id="Game" style="display: none;" class="Screen">
         <canvas id="Canvas" style="position: absolute; top: 0; left: 0;"></canvas>
-        <span style="position: absolute; bottom: 10px; left: 10px; font-weight: bold;" id="Ping"></span>
+        <span style="position: absolute; bottom: 14px; left: 10px; font-weight: bold;" id="Ping"></span>
         <span style="position: absolute; bottom: 25px; left: 10px; font-weight: bold;" id="Log"></span>
+        <button style="position: absolute; bottom: 4px; left: 10px; font-weight: bold; background-color: #f00; display: none;" id="DevTakeDamage">Ghost</button>
+        <!For anyone looking at this button, I can't attack while it is active, and I will only use it to work on the game without being killed>
         <div id="Chat" style="position: absolute; bottom: 30px; left: 0; width: 300px; height: 70px;">
             <div id="ChatMessages" style="overflow-y: scroll; max-height: 200px; width: 300px; background-color: rgba(0, 0, 0, 0.5); padding: 5px; position: absolute; bottom: 40px; left: 10px; font-size: 14px;"></div>
             <input type="text" id="ChatInput" style="position: absolute; bottom: 10px; left: 10px; width: 240px; color: black; background-color: white;" placeholder="Type a message..." maxlength="200" />
-            <button id="ChatSend" style="position: absolute; bottom: 10px; left: 260px; color: black; background-color: #fcf;">Send</button>
-            <button id="ToggleChat" style="position: absolute; bottom: 10px; left: 309px; color: black; background-color: #fcf;">Hide</button>
+            <button id="ChatSend" style="position: absolute; bottom: 10px; left: 260px; color: black; background-color: #ccf;">Send</button>
+            <button id="ToggleChat" style="position: absolute; bottom: 10px; left: 309px; color: black; background-color: #ccf;">Hide</button>
         </div>
     </div>
     <script>
