@@ -6,6 +6,7 @@ let Canvas;
 let Ctx;
 
 let SomethingWentWrong = false;
+let NetworkErrorsUntilStop = 0;
 
 const MAX_X = 2000;
 const MAX_Y = 2000;
@@ -62,6 +63,7 @@ let EMPs = [];
 let Shockwaves = [];
 let ChatMessages = [];
 let GhostChars = [];
+let DamageIndicators = [];
 let CookieJSON = {};
 
 let ThisSession = new Session(Math.round(Math.random() * 100000000000));
@@ -201,8 +203,11 @@ function CallServer(Data, Url, Callback) {
   };
 
   Xhr.onerror = function () {
-    SetScreen("SomethingWentWrong");
-    SomethingWentWrong = true;
+    NetworkErrorsUntilStop += 1;
+    if (NetworkErrorsUntilStop >= 5) {
+      SetScreen("SomethingWentWrong");
+      SomethingWentWrong = true;
+    }
     //throw new Error('Network error occurred.');
   };
 
@@ -439,6 +444,25 @@ function DrawGameObjs() {
   }
 }
 
+function DrawDamageIndicators() {
+  for (let Indicator of DamageIndicators) {
+    if (Indicator.Amount > 0)
+      Ctx.fillStyle = "rgb(0, 255, 0)";
+    else if (Indicator.Amount < 0)
+      Ctx.fillStyle = "rgb(255, 0, 0)";
+    else
+      Ctx.fillStyle = "rgb(255, 255, 255)";
+
+    Ctx.save();
+    Ctx.textAlign = "center";
+    Ctx.textBaseline = "middle";
+    Ctx.font = "16px bold monospace";
+    Ctx.globalAlpha = Indicator.Alpha;
+    Ctx.fillText(Math.abs(Indicator.Amount), Indicator.X - Camera.X, Indicator.Y - Camera.Y);
+    Ctx.restore();
+  }
+}
+
 function CalcPlayers(DT) {
   for (let Plr of SessionsInGame) {
     if (Plr == ThisSession || Plr.Health <= 0)
@@ -565,13 +589,13 @@ function DrawPlayers() {
   Ctx.save();
   let Img = Get("#DevIconImg")
   for (Plr of SessionsInGame) {
-    if (Plr.IsDev == true) {
+    if (Plr.IsDev == true && Plr.Health > 0) {
       Ctx.globalAlpha = 0.5 * Math.max(Plr.Alpha, 0);
       Ctx.drawImage(Img, Plr.X - Camera.X - 16, Plr.Y - Camera.Y - 64, 32, 32);
     }
   }
   for (Plr of GhostChars) {
-    if (Plr.IsDev == true) {
+    if (Plr.IsDev == true && Plr.Health > 0) {
       Ctx.globalAlpha = 0.5 * Math.max(Plr.Alpha, 0);
       Ctx.drawImage(Img, Plr.X - Camera.X - 16, Plr.Y - Camera.Y - 64, 32, 32);
     }
@@ -948,6 +972,7 @@ function Frame() {
   Get("#DevTakeDamage").style.display = ThisSession.IsDev ? "inline" : "none";
 
   WaitForNewData -= 1 * DT;
+  NetworkErrorsUntilStop -= DT / 4;
 
   if (WaitForNewData <= 0) {
     ThisSession.Name = Get("#SessionName").value;
@@ -964,6 +989,7 @@ function Frame() {
       Bullets = Response.Bullets || [];
       ChatMessages = Response.ChatMessages || [];
       GhostChars = Response.GhostChars || [];
+      DamageIndicators = Response.DamageIndicators || [];
 
       for (let EMP of Response.EMPs || []) {
         EMPs.push(EMP);
@@ -1027,7 +1053,10 @@ function Frame() {
   DrawGameObjs();
   CalcPlayers(DT);
   DrawPlayers();
+  DrawDamageIndicators();
   DrawLeaderboard();
+
+  Get("#Log").innerText = GhostChars.length;
 
   if (ThisSession.Health <= 0) {
     Ctx.beginPath();

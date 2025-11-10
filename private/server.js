@@ -52,6 +52,7 @@ class Game {
     this.Shockwaves = [];
     this.ChatMessages = [];
     this.GhostChars = [];
+    this.DamageIndicators = [];
   }
 }
 
@@ -102,6 +103,16 @@ class ChatMessage {
     this.SenderName = SenderName;
     this.MessageText = MessageText;
     this.Timestamp = Date.now();
+  }
+}
+
+class DamageIndicator {
+  constructor(X, Y, Amount) {
+    this.X = X;
+    this.Y = Y;
+    this.Amount = Amount;
+    this.LifeTime = 1;
+    this.Alpha = 1;
   }
 }
 
@@ -223,6 +234,7 @@ const Server = Http.createServer((Req, Res) => {
         }
         Body.ChatMessages = Game.ChatMessages;
         Body.GhostChars = Game.GhostChars;
+        Body.DamageIndicators = Game.DamageIndicators;
       }
 
       Res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -560,12 +572,16 @@ setInterval(() => {
         Plr.ServerSetProps.X = Plr.X - Math.cos(Plr.Rot) * 60;
         Plr.ServerSetProps.Y = Plr.Y - Math.sin(Plr.Rot) * 60;
         Plr.Stabbing = 0.25;
+        let Indicator;
+        let Indicator2;
         if (Plr2.Move2 == "Passive Thorns" && Plr2.ParryingTime <= 0) {
           Plr.ServerSetProps.Health = Plr.Health - 2;
           Plr.Health -= 2;
           Plr2.ServerSetProps.Health = Plr2.Health + 2;
           Plr2.Health += 2;
           Plr.LastHitBy = Plr2.Id;
+          Indicator = new DamageIndicator(Plr2.X + Math.random() * 8 - 4, Plr2.Y + Math.random() * 8 - 4, -8);
+          Indicator2 = new DamageIndicator(Plr.X + Math.random() * 8 - 4, Plr.Y + Math.random() * 8 - 4, -2);
         }
         if (Plr2.ParryingTime > 0) {
           Plr2.ParryingTime = -20;
@@ -577,7 +593,16 @@ setInterval(() => {
             Plr2.ServerSetProps.Speed = Math.round((Plr2.Speed - 0.5) * 1000) / 1000;
             Plr2.Speed = Math.round((Plr2.Speed - 0.5) * 1000) / 1000
           }, 1000);
+          Indicator = new DamageIndicator(Plr2.X + Math.random() * 8 - 4, Plr2.Y + Math.random() * 8 - 4, 10);
         }
+        if (!Indicator) {
+          Indicator = new DamageIndicator(Plr2.X + Math.random() * 8 - 4, Plr2.Y + Math.random() * 8 - 4, -10);
+        }
+        let Game = FindGame(Plr2.Game.Id);
+        Game.DamageIndicators.push(Indicator);
+        if (Indicator2)
+          Game.DamageIndicators.push(Indicator2);
+        
         console.log(`\n${Plr.Name} stabbed ${Plr2.Name}`);
       }
     }
@@ -698,6 +723,14 @@ setInterval(() => {
       Ghost.Alpha -= DT / (0.4 / 0.1);
       if (Ghost.LifeTime <= 0) {
         Game.GhostChars.splice(i, 1);
+      }
+    }
+
+    for (let [i, Indicator] of Game.DamageIndicators.entries()) {
+      Indicator.LifeTime -= DT;
+      Indicator.Alpha -= DT;
+      if (Indicator.LifeTime <= 0) {
+        Game.DamageIndicators.splice(i, 1);
       }
     }
   }
