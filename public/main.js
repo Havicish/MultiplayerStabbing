@@ -468,8 +468,8 @@ function CalcPlayers(DT) {
     if (Plr == ThisSession || Plr.Health <= 0)
       continue
 
-    Plr.X += Plr.VelX * DT * 60;
-    Plr.Y += Plr.VelY * DT * 60;
+    Plr.X += Plr.VelX * DT * 60 * Plr.Speed;
+    Plr.Y += Plr.VelY * DT * 60 * Plr.Speed;
     Plr.Rot += Plr.VelRot * DT * 60;
     if (Math.sqrt(Plr.VelX ** 2 + Plr.VelY ** 2) > 1) {
       Plr.VelX += (Math.cos(Plr.Rot) * Math.sqrt(Plr.VelX ** 2 + Plr.VelY ** 2) / 9) * DT * 60;
@@ -535,6 +535,7 @@ function DrawPlayer(Plr) {
 
   let Color = `rgba(${InterpR}, ${InterpG}, ${InterpB}, ${Plr.Alpha})`;
   let ColorA25 = `rgba(${InterpR}, ${InterpG}, ${InterpB}, ${Plr.Alpha * 0.25})`;
+  let NameColor = `rgba(${R}, ${G}, ${B}, ${Plr.Alpha})`
 
   Ctx.beginPath();
   Ctx.fillStyle = Color;
@@ -567,7 +568,7 @@ function DrawPlayer(Plr) {
   Ctx.lineWidth = 1;
   Ctx.stroke();
   Ctx.beginPath();
-  Ctx.fillStyle = `rgba(255, 255, 255, ${Plr.Alpha})`;
+  Ctx.fillStyle = NameColor;
   Ctx.font = "12px monospace"
   Ctx.fillText(Plr.Name, Plr.X - Plr.Name.length * 12 * 3/10 - Camera.X, Plr.Y - 20 - Camera.Y);
   Ctx.beginPath();
