@@ -370,6 +370,12 @@ const Server = Http.createServer((Req, Res) => {
             continue;
           if (Distance(ThisSession.X, ThisSession.Y, Plr.X, Plr.Y) <= 350) {
             Plr.ServerSetProps.MoveStunned = 3.5;
+            Plr.ServerSetProps.Speed = Plr.Speed - 0.2;
+            Plr.Speed -= 0.2;
+            setTimeout(() => {
+              Plr.ServerSetProps.Speed = Plr.Speed + 0.2;
+              Plr.Speed += 0.2;
+            }, 3500);
           }
         }
       }
@@ -561,7 +567,7 @@ setInterval(() => {
     for (let Plr2 of Sessions) {
       if (Plr == Plr2 || Plr.Stabbing > 0 || Plr2.Health <= 0 || Plr.Game == undefined || Plr2.Game == undefined || Plr.Game.Id != Plr2.Game.Id)
         continue;
-      if (Distance(Plr.X + Math.cos(Plr.Rot) * 60, Plr.Y + Math.sin(Plr.Rot) * 60, Plr2.X + Math.cos(Plr2.Rot), Plr2.Y + Math.sin(Plr2.Rot)) < 50 && Plr2.Invincibility == false && Plr.Invincibility == false) {
+      if (Distance(Plr.X + Math.cos(Plr.Rot) * 60, Plr.Y + Math.sin(Plr.Rot) * 60, Plr2.X + Math.cos(Plr2.Rot), Plr2.Y + Math.sin(Plr2.Rot)) < 50 && Plr2.Invincibility == false && Plr.Invincibility == false && Plr.Health > 0 && Plr2.Health > 0) {
         Plr2.ServerSetProps.Health = Plr2.Health - 10;
         Plr2.Health -= 10;
         Plr2.ServerSetProps.VelX = Math.cos(Plr.Rot) * 5;
@@ -580,8 +586,8 @@ setInterval(() => {
           Plr2.ServerSetProps.Health = Plr2.Health + 2;
           Plr2.Health += 2;
           Plr.LastHitBy = Plr2.Id;
-          Indicator = new DamageIndicator(Plr2.X + Math.random() * 8 - 4, Plr2.Y + Math.random() * 8 - 4, -8);
-          Indicator2 = new DamageIndicator(Plr.X + Math.random() * 8 - 4, Plr.Y + Math.random() * 8 - 4, -2);
+          Indicator = new DamageIndicator(Plr2.X + Math.random() * 16 - 8, Plr2.Y + Math.random() * 16 - 8, -8);
+          Indicator2 = new DamageIndicator(Plr.X + Math.random() * 16 - 8, Plr.Y + Math.random() * 16 - 8, -2);
         }
         if (Plr2.ParryingTime > 0) {
           Plr2.ParryingTime = -20;
@@ -593,10 +599,10 @@ setInterval(() => {
             Plr2.ServerSetProps.Speed = Math.round((Plr2.Speed - 0.5) * 1000) / 1000;
             Plr2.Speed = Math.round((Plr2.Speed - 0.5) * 1000) / 1000
           }, 1000);
-          Indicator = new DamageIndicator(Plr2.X + Math.random() * 8 - 4, Plr2.Y + Math.random() * 8 - 4, 10);
+          Indicator = new DamageIndicator(Plr2.X + Math.random() * 16 - 8, Plr2.Y + Math.random() * 16 - 8, 10);
         }
         if (!Indicator) {
-          Indicator = new DamageIndicator(Plr2.X + Math.random() * 8 - 4, Plr2.Y + Math.random() * 8 - 4, -10);
+          Indicator = new DamageIndicator(Plr2.X + Math.random() * 16 - 8, Plr2.Y + Math.random() * 16 - 8, -10);
         }
         let Game = FindGame(Plr2.Game.Id);
         Game.DamageIndicators.push(Indicator);
@@ -639,6 +645,9 @@ setInterval(() => {
         Killer.Kills += 1;
         Killer.ServerSetProps.Kills = Killer.Kills;
         Killer.Health = Math.min(100, Killer.Health + 75 + Math.round(Math.random()) * 5);
+        let Indicator = new DamageIndicator(Killer.X + Math.random() * 16 - 8, Killer.Y + Math.random() * 16 - 8, 75);
+        let Game = FindGame(Plr.Game.Id);
+        Game.DamageIndicators.push(Indicator);
         Killer.ServerSetProps.Health = Killer.Health;
         Plr.HasBeenKilled = true;
       }
@@ -659,9 +668,25 @@ setInterval(() => {
         if (Distance(Bullet.X, Bullet.Y, Plr.X, Plr.Y) < 40) {
           Plr.ServerSetProps.Health = Plr.Health - 10;
           Plr.Health -= 10;
+          let Indicator;
+          if (Plr.ParryingTime > 0) {
+            Plr.ParryingTime = -20;
+            Plr.ServerSetProps.Health = Math.min(Plr.Health + 20, 100);
+            Plr.Health = Math.min(Plr.Health + 20, 100);
+            Plr.ServerSetProps.Speed = Math.round((Plr.Speed + 0.5) * 1000) / 1000;
+            Plr.Speed = Math.round((Plr.Speed + 0.5) * 1000) / 1000;
+            setTimeout(() => {
+              Plr.ServerSetProps.Speed = Math.round((Plr.Speed - 0.5) * 1000) / 1000;
+              Plr.Speed = Math.round((Plr.Speed - 0.5) * 1000) / 1000;
+            }, 1000);
+            Indicator = new DamageIndicator(Plr.X + Math.random() * 16 - 8, Plr.Y + Math.random() * 16 - 8, 10);
+          }
           Plr.ServerSetProps.VelX = Math.cos(Bullet.Direction) * 10;
           Plr.ServerSetProps.VelY = Math.sin(Bullet.Direction) * 10;
           Plr.LastHitBy = Bullet.OwnerId;
+          if (!Indicator)
+            Indicator = new DamageIndicator(Plr.X + Math.random() * 16 - 8, Plr.Y + Math.random() * 16 - 8, -10);
+          Game.DamageIndicators.push(Indicator);
           console.log(`\n${FindSession(Bullet.OwnerId).Name} hit ${Plr.Name} with a bullet`);
           Game.Bullets.splice(i, 1);
           break;
@@ -683,6 +708,8 @@ setInterval(() => {
           let Dir = Math.atan2(Plr.Y - Caltrop.Y, Plr.X - Caltrop.X);
           Plr.ServerSetProps.VelX = Math.cos(Dir) * 10;
           Plr.ServerSetProps.VelY = Math.sin(Dir) * 10;
+          let Indicator = new DamageIndicator(Plr.X + Math.random() * 16 - 8, Plr.Y + Math.random() * 16 - 8, -10);
+          Game.DamageIndicators.push(Indicator);
           Game.Caltrops.splice(i, 1);
         }
       }

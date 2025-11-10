@@ -765,8 +765,12 @@ function Move1() {
 
   if (ThisSession.Move1 == "Shoot") {
     ThisSession.Move1CD = 2.5;
+    if (ThisSession.Move2 == "Passive Faster Cooldowns")
+      ThisSession.Move1CD = 1.5;
     CallServer(ThisSession, "CreateBullet", (Response) => {
       ThisSession.Move1CD = 2.5;
+      if (ThisSession.Move2 == "Passive Faster Cooldowns")
+        ThisSession.Move1CD = 1.5;
     });
   }
 
@@ -905,8 +909,8 @@ function Frame() {
     ThisSession.Move1CD = Math.max(0, ThisSession.Move1CD - DT);
     ThisSession.Move2CD = Math.max(0, ThisSession.Move2CD - DT);
   } else {
-    ThisSession.Move1CD = Math.max(0, ThisSession.Move1CD - DT * 2.25);
-    ThisSession.Move2CD = Math.max(0, ThisSession.Move2CD - DT * 2.25);
+    ThisSession.Move1CD = Math.max(0, ThisSession.Move1CD - DT * 20000.25);
+    ThisSession.Move2CD = Math.max(0, ThisSession.Move2CD - DT * 20000.25);
   }
 
   ThisSession.MoveStunned -= DT;
